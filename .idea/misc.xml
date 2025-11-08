@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="EntryPointsManager">
+    <entry_points version="2.0">
+      <entry_point TYPE="field" FQNAME="rife.bld.extension.spotbugs.Effort DEFAULT" />
+      <entry_point TYPE="field" FQNAME="rife.bld.extension.spotbugs.Effort LESS" />
+      <entry_point TYPE="field" FQNAME="rife.bld.extension.spotbugs.Priority LOWER" />
+      <entry_point TYPE="field" FQNAME="rife.bld.extension.spotbugs.Effort MIN" />
+      <entry_point TYPE="field" FQNAME="rife.bld.extension.spotbugs.Effort MORE" />
+      <entry_point TYPE="field" FQNAME="rife.bld.extension.spotbugs.Priority SUPPRESS" />
+    </entry_points>
+    <pattern value="rife.bld.extension.SpotBugsOperationBuild" method="pmd" />
+    <pattern value="rife.bld.extension.SpotBugsOperationBuild" method="reporter" />
+    <pattern value="rife.bld.extension.SpotBugsOperationBuild" />
+    <pattern value="rife.bld.extension.spotbugs.Effort" />
+    <pattern value="rife.bld.extension.spotbugs.Priority" />
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_17" project-jdk-name="17" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/build" />
+  </component>
+</project>

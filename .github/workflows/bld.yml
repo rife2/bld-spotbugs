@@ -1,0 +1,56 @@
+name: bld-ci
+
+on: [ push, pull_request, workflow_dispatch ]
+
+jobs:
+  build-bld-project:
+    strategy:
+      matrix:
+        java-version: [ 17, 21, 25 ]
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout source repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK ${{ matrix.java-version }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: "zulu"
+          java-version: ${{ matrix.java-version }}
+
+      - name: Download examples dependencies
+        working-directory: examples
+        run: ./bld download
+
+      - name: Compile examples source code
+        working-directory: examples
+        run: ./bld compile
+
+      - name: Check example with SpotBugs
+        id: spotbugs
+        continue-on-error: true
+        working-directory: example
+        run: ./bld spotbugs
+
+      - name: Verify example SpotBugs failure
+        if: always() && steps.spotbugs.outcome != 'failure'
+        run: echo "The example SpotBugs step should have failed" && exit 1
+
+      - name: Download dependencies
+        run: ./bld download
+
+      - name: Compile source code
+        run: ./bld compile
+
+      - name: Run tests
+        id: tests
+        run: ./bld test
+
+      - name: Run reporter
+        if: always() && steps.tests.outcome == 'failure'
+        run: ./bld reporter --all

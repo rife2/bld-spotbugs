@@ -23,12 +23,12 @@ jobs:
           distribution: "zulu"
           java-version: ${{ matrix.java-version }}
 
-      - name: Download examples dependencies
-        working-directory: examples
+      - name: Download example dependencies
+        working-directory: example
         run: ./bld download
 
-      - name: Compile examples source code
-        working-directory: examples
+      - name: Compile example source code
+        working-directory: example
         run: ./bld compile
 
       - name: Check example with SpotBugs

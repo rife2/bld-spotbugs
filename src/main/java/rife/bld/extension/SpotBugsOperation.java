@@ -322,13 +322,29 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     /**
      * Specifies files to analyze for bugs.
      *
+     * @param files array of files to analyze
+     * @return this operation
+     * @see #analyze(String...)
+     * @see #analyze(Collection)
+     */
+    public SpotBugsOperation analyze(Path... files) {
+        analyze_.addAll(Arrays.stream(files).map(Path::toFile).toList());
+        return this;
+    }
+
+    /**
+     * Specifies files to analyze for bugs.
+     *
      * @param files collection of files to analyze
      * @return this operation
      * @see #analyze(String...)
      * @see #analyze(File...)
      */
-    public SpotBugsOperation analyze(Collection<File> files) {
-        analyze_.addAll(files);
+    public SpotBugsOperation analyze(Collection<?> files) {
+        files.stream()
+                .filter(Objects::nonNull)
+                .map(this::toFile)
+                .forEach(analyze_::add);
         return this;
     }
 
@@ -1316,7 +1332,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         return this;
     }
 
-
     /**
      * Returns the SpotBugs home directory.
      *
@@ -2182,6 +2197,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param path the source path
      * @return this operation
+     * @see #sourcePath(Path... path)
+     * @see #sourcePath(File... path)
      * @see #sourcePath(Collection)
      */
     public SpotBugsOperation sourcePath(String... path) {
@@ -2191,13 +2208,30 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
     /**
      * Set the source path for analyzed classes.
+     * * @see #sourcePathPaths(Collection)
      *
      * @param path the source path
      * @return this operation
-     * @see #sourcePath(String...)
+     * @see #sourcePath(String... path)
+     * @see #sourcePath(File... path)
+     * @see #sourcePath(Collection)
      */
-    public SpotBugsOperation sourcePath(Collection<String> path) {
-        sourcePath_.addAll(path);
+    public SpotBugsOperation sourcePath(Path... path) {
+        sourcePath_.addAll(Arrays.stream(path).map(Path::toString).toList());
+        return this;
+    }
+
+    /**
+     * Set the source path for analyzed classes.
+     *
+     * @param path the source path
+     * @return this operation
+     * @see #sourcePath(String... path)
+     * @see #sourcePath(Path... path)
+     * @see #sourcePath(Collection)
+     */
+    public SpotBugsOperation sourcePath(File... path) {
+        sourcePath_.addAll(Arrays.stream(path).map(File::getAbsolutePath).toList());
         return this;
     }
 
@@ -2208,6 +2242,24 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public Collection<String> sourcePath() {
         return sourcePath_;
+    }
+
+    /**
+     * Set the source path for analyzed classes.
+     *
+     * @param path the source path
+     * @return this operation
+     * @see #sourcePath(String... path)
+     * @see #sourcePath(Path... path)
+     * @see #sourcePath(File... path)
+     * @see #sourcePath(Collection)
+     */
+    public SpotBugsOperation sourcePath(Collection<?> path) {
+        path.stream()
+                .filter(Objects::nonNull)
+                .map(this::toAbsolutePath)
+                .forEach(sourcePath_::add);
+        return this;
     }
 
     private String sourcePathToUri(String path, int startLine) {
@@ -2283,6 +2335,26 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public boolean timestampNow() {
         return timestampNow_;
+    }
+
+    private String toAbsolutePath(Object item) {
+        if (item instanceof File) {
+            return ((File) item).getAbsolutePath();
+        } else if (item instanceof Path) {
+            return ((Path) item).toAbsolutePath().toString();
+        } else {
+            return item.toString();
+        }
+    }
+
+    private File toFile(Object item) {
+        if (item instanceof File) {
+            return (File) item;
+        } else if (item instanceof Path) {
+            return ((Path) item).toFile();
+        } else {
+            return new File(item.toString());
+        }
     }
 
     /**

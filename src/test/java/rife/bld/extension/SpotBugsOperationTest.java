@@ -1668,8 +1668,8 @@ class SpotBugsOperationTest {
 
             op = op.sourcePath(path1, path2);
             assertEquals(4, op.sourcePath().size(), "size is not 4");
-            assertTrue(op.sourcePath().contains(path1.toString()), path1 + " not found");
-            assertTrue(op.sourcePath().contains(path2.toString()), path2 + " not found");
+            assertTrue(op.sourcePath().contains(path1.getAbsolutePath()), path1 + " not found");
+            assertTrue(op.sourcePath().contains(path2.getAbsolutePath()), path2 + " not found");
         }
 
         @Test
@@ -1680,8 +1680,8 @@ class SpotBugsOperationTest {
 
             op = op.sourcePath(List.of(path1, path2));
             assertEquals(4, op.sourcePath().size(), "size is not 4");
-            assertTrue(op.sourcePath().contains(path1.toString()), path1 + " not found");
-            assertTrue(op.sourcePath().contains(path2.toString()), path2 + " not found");
+            assertTrue(op.sourcePath().contains(path1.getAbsolutePath()), path1 + " not found");
+            assertTrue(op.sourcePath().contains(path2.getAbsolutePath()), path2 + " not found");
         }
 
         @Test
@@ -1704,8 +1704,8 @@ class SpotBugsOperationTest {
 
             op = op.sourcePath(List.of(path1, path2));
             assertEquals(4, op.sourcePath().size(), "size is not 4");
-            assertTrue(op.sourcePath().contains(path1.toString()), path1 + " not found");
-            assertTrue(op.sourcePath().contains(path2.toString()), path2 + " not found");
+            assertTrue(op.sourcePath().contains(path1.toAbsolutePath().toString()), path1 + " not found");
+            assertTrue(op.sourcePath().contains(path2.toAbsolutePath().toString()), path2 + " not found");
         }
 
         @Test

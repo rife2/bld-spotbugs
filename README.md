@@ -27,7 +27,7 @@ To check for bugs in the main source code, add the following to your build file:
 public void spotbugs() throws Exception {
     new SpotBugsOperation()
             .fromProject(this)
-            .home("/path/to/spotbugs/home")
+            .home("/path/to/spotbugs/")
             .execute();
 }
 ```
@@ -59,7 +59,7 @@ To also check the test source code, add the following to your build file:
 public void spotbugs() throws Exception {
     new SpotBugsOperation()
             .fromProject(this, true) // check src/main and src/test
-            .spotBugsJar("/path/to/spotbugs/home/lib/spotbugs.jar")
+            .spotBugsJar("/path/to/spotbugs/lib/spotbugs.jar")
             .execute();
 }
 ```

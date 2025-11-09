@@ -17,7 +17,7 @@
 package rife.bld.extension.spotbugs;
 
 /**
- * Specifies changes to priority levels.
+ * Specifies changes to the priority level.
  */
 public enum Priority {
     /**

@@ -16,6 +16,9 @@
 
 package rife.bld.extension.spotbugs;
 
+/**
+ * Specifies changes to the analysis effort level.
+ */
 public enum Effort {
     /**
      * The effort level to minimize the computation cost. SpotBugs will try to conserve space at the

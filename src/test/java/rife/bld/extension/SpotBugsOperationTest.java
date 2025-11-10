@@ -138,6 +138,12 @@ class SpotBugsOperationTest {
     @DisplayName("Bugs")
     @SuppressWarnings("all")
     class Bugs {
+        List<String> bugs;
+
+        public Bugs(List<String> bugs) {
+            this.bugs = bugs;
+        }
+
         void nullPointerExceptionCaughtBug() {
             try {
                 throw new NullPointerException();
@@ -192,11 +198,13 @@ class SpotBugsOperationTest {
             assertTrue(TEST_LOG_HANDLER.containsMessage("[spotbugs] Found"),
                     "'[spotbugs]' Found not found");
             assertTrue(TEST_LOG_HANDLER.containsMessage("Class: rife.bld.extension.SpotBugsOperationTest$Bugs"),
-                    "SpotBugsOperationTest class not found");
+                    "Bugs class not found");
             assertTrue(TEST_LOG_HANDLER.containsMessage("Method: selfAssignmentBug"),
                     "selfAssignmentBug method not found");
             assertTrue(TEST_LOG_HANDLER.containsMessage("Method: nullPointerExceptionCaughtBug"),
                     "nullPointerExceptionCaughtBug method not found");
+            assertTrue(TEST_LOG_HANDLER.containsMessage("Field: bugs"),
+                    "bugs field not found");
         }
 
         @Test

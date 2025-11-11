@@ -120,14 +120,20 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     public void execute() throws IOException, FileUtilsErrorException, InterruptedException, ExitStatusException {
         super.execute();
 
-        var bugs = parseSpotBugsXml(output_.toPath());
+        var result = parseSpotBugsXml(output_.toPath());
 
-        log(EXECUTE_METHOD_NAME, Level.FINEST, bugs.toString());
+        log(EXECUTE_METHOD_NAME, Level.FINEST, result.toString());
+
         if (!silent()) {
-            printBugs(bugs);
+            if (result.totalBugs() != result.bugs.size()) {
+                log(EXECUTE_METHOD_NAME, Level.SEVERE,
+                        "Total bugs parsed do not match the number of bugs found. Please report this issue," +
+                                "and include a copy of the XML report if feasible.");
+            }
+            printBugs(result);
         }
 
-        if (!ignoreFailures_ && !bugs.isEmpty()) {
+        if (!ignoreFailures_ && !result.bugs.isEmpty()) {
             throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
         }
     }
@@ -2347,12 +2353,20 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         }
     }
 
-    private void printBugs(List<SpotBug> bugs) {
+    private void printBugs(SpotBugsResult results) {
+        var bugs = results.bugs();
         if (bugs.isEmpty()) {
-            log(PRINT_BUGS_METHOD_NAME, Level.WARNING, "No potential bugs found");
+            log(PRINT_BUGS_METHOD_NAME, Level.WARNING,
+                    String.format("No potential bugs found in %d classes", results.totalClasses));
         } else {
             log(PRINT_BUGS_METHOD_NAME, Level.WARNING,
-                    String.format("Found %d potential bug%s", bugs.size(), bugs.size() == 1 ? "" : "s"));
+                    String.format(
+                            "Found %d potential bug%s in %d class%s",
+                            bugs.size(),
+                            bugs.size() == 1 ? "" : "s",
+                            results.totalClasses,
+                            results.totalClasses == 1 ? "" : "es")
+            );
 
             for (var result : bugs) {
                 var message = String.format("%s%n" +
@@ -2436,5 +2450,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             String sourcePath,
             int startLine,
             int endLine) {
+    }
+
+    private record SpotBugsResult(
+            List<SpotBug> bugs,
+            int totalBugs,
+            int totalClasses) {
     }
 }

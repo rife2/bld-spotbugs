@@ -43,12 +43,14 @@ The output will look something like:
 [spotbugs] sourcepath[src/main/java, src/main/resources...]
 [spotbugs] analyze[build/main]
 [spotbugs] Found 17 potential bugs
-[spotbugs] file:///dev/example/src/main/org/example/Example.java:251
-    Method: adjustPriorities, Class: com.example.Example, Priority: 2, Rank: 18, Type: EI_EXPOSE_REP, Category: MALICIOUS_CODE
-        --> May expose internal representation by returning reference to mutable object
-[spotbugs] file:///dev/example/src/main/org/example/Example.java:343
-    Method: foo, Class: com.example.Example, Priority: 2, Rank: 17, Type: DCN_NULLPOINTER_EXCEPTION, Category: STYLE
+[spotbugs] file:///dev/example/src/main/java/com/example/Example.java:39
+    DCN_NULLPOINTER_EXCEPTION (https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#dcn-nullpointer-exception)
+    Method: hasSpace, Class: com.example.Example, Priority: 2, Rank: 17, Category: STYLE
         --> NullPointerException caught
+[spotbugs] file:///dev/example/src/main/java/com/example/Example.java:27
+    EI_EXPOSE_REP (https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#ei-expose-rep)
+    Method: getList, Field: mutableList, Class: com.example.Example, Priority: 2, Rank: 18, Category: MALICIOUS_CODE
+        --> May expose internal representation by returning reference to mutable object
 ...
 ```
 

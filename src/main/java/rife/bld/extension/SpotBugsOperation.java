@@ -2357,15 +2357,17 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
             for (var result : bugs) {
                 var message = String.format("%s%n" +
-                                "    %s%sClass: %s, Priority: %s, Rank: %s, Type: %s, Category: %s%n" +
+                                "    %s (%s)%n" +
+                                "    %s%sClass: %s, Priority: %s, Rank: %s, Category: %s%n" +
                                 "        --> %s",
                         sourcePathToUri(result.sourcePath(), result.startLine),
+                        result.type,
+                        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html" + toAnchor(result.type),
                         result.method.isBlank() ? "" : "Method: " + result.method + ", ",
                         result.field.isBlank() ? "" : "Field: " + result.field + ", ",
                         result.className,
                         result.priority,
                         result.rank,
-                        result.type,
                         result.category,
                         detailedMessage_ ? result.message : result.shortMessage);
 
@@ -2401,6 +2403,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             return ((Path) item).toAbsolutePath().toString();
         } else {
             return item.toString();
+        }
+    }
+
+    private String toAnchor(String type) {
+        if (type == null || type.isBlank()) {
+            return "";
+        } else {
+            return '#' + type.replace('_', '-').toLowerCase();
         }
     }
 

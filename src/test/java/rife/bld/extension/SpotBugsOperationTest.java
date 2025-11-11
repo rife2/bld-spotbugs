@@ -205,6 +205,9 @@ class SpotBugsOperationTest {
                     "nullPointerExceptionCaughtBug method not found");
             assertTrue(TEST_LOG_HANDLER.containsMessage("Field: bugs"),
                     "bugs field not found");
+            assertTrue(TEST_LOG_HANDLER.containsMessage(
+                            "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#ei-expose-rep"),
+                    "bug description URL not found");
         }
 
         @Test

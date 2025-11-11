@@ -27,8 +27,7 @@ import java.util.List;
 import java.util.Locale;
 
 import static rife.bld.dependencies.Repository.*;
-import static rife.bld.dependencies.Scope.compile;
-import static rife.bld.dependencies.Scope.test;
+import static rife.bld.dependencies.Scope.*;
 import static rife.bld.operations.JavadocOptions.DocLinkOption.NO_MISSING;
 
 public class SpotBugsOperationBuild extends Project {
@@ -48,6 +47,9 @@ public class SpotBugsOperationBuild extends Project {
         var junit = version(6, 0, 1);
         scope(compile)
                 .include(dependency("com.uwyn.rife2", "bld", version(2, 3, 0)));
+        scope(provided)
+                .include(dependency("com.github.spotbugs", "spotbugs-annotations",
+                        version(4, 9, 8)));
         scope(test)
                 .include(dependency("com.uwyn.rife2", "bld-extensions-testing-helpers",
                         version(0, 9, 5, "SNAPSHOT")))

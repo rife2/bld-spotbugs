@@ -1,5 +1,7 @@
 package com.example;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
 import java.util.List;
 
 public class Example {
@@ -17,6 +19,7 @@ public class Example {
     }
 
     // Bug: Dead store to local variable
+    @SuppressFBWarnings("DLS_DEAD_LOCAL_STORE")
     public void foo() {
         int x = 3;
         x = x;

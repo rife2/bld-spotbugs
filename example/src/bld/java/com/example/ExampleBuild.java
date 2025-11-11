@@ -17,6 +17,8 @@ public class ExampleBuild extends Project {
 
         downloadSources = true;
         repositories = List.of(MAVEN_CENTRAL, RIFE2_RELEASES);
+        scope(provided)
+                .include(dependency("com.github.spotbugs", "spotbugs-annotations", version(4, 9, 8)));
         scope(test)
                 .include(dependency("org.junit.jupiter", "junit-jupiter", version(6, 0, 1)))
                 .include(dependency("org.junit.platform", "junit-platform-console-standalone", version(6, 0, 1)));
@@ -29,7 +31,7 @@ public class ExampleBuild extends Project {
     @BuildCommand(summary = "Runs SpotBugs on this project")
     public void spotbugs() throws Exception {
         new SpotBugsOperation()
-                .fromProject(this, false) // check src/main and src/test
+                .fromProject(this, true) // check src/main and src/test
                 .home("spotbugs-4.9.8")
                 .exclude("excludeFilter.xml")
                 .execute();

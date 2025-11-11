@@ -16,12 +16,14 @@
 
 package rife.bld.extension;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import rife.bld.BaseProject;
+import rife.bld.blueprints.BaseProjectBlueprint;
 import rife.bld.extension.spotbugs.Effort;
 import rife.bld.extension.spotbugs.Priority;
 import rife.bld.extension.testing.LoggingExtension;
@@ -42,6 +44,7 @@ import static rife.bld.extension.SpotBugsOperation.INVALID_SPOTBUGS_LOCATION;
 
 @ExtendWith(LoggingExtension.class)
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
+@SuppressFBWarnings("DMI_HARDCODED_ABSOLUTE_FILENAME")
 class SpotBugsOperationTest {
     private static final String SPOTBUGS_VERSION = "4.9.8";
 
@@ -183,6 +186,30 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        void executeExample() throws Exception {
+            var op = new SpotBugsOperation()
+                    .fromProject(
+                            new BaseProjectBlueprint(
+                                    new File("example"),
+                                    "com.example",
+                                    "Examples",
+                                    "example")
+                    )
+                    .ignoreFailure(true)
+                    .spotBugsJar("example/spotbugs-" + SPOTBUGS_VERSION + "/lib/spotbugs.jar");
+            op.execute();
+
+            assertFalse(TEST_LOG_HANDLER.containsMessage("DLS_DEAD_LOCAL_STORE"), "DLS_DEAD_LOCAL_STORE found");
+            assertTrue(TEST_LOG_HANDLER.containsMessage("EI_EXPOSE_REP2"), "EI_EXPOSE_REP2 not found");
+
+            TEST_LOG_HANDLER.clear();
+            op.exclude("example/excludeFilter.xml");
+            op.execute();
+
+            assertFalse(TEST_LOG_HANDLER.containsMessage("EI_EXPOSE_REP2"), "EI_EXPOSE_REP2 found");
+        }
+
+        @Test
         void executeIgnoreFailureAndSilent() throws Exception {
             newBaseOperation().ignoreFailure(true).silent(true).execute();
             assertTrue(TEST_LOG_HANDLER.isEmpty());
@@ -206,7 +233,7 @@ class SpotBugsOperationTest {
             assertTrue(TEST_LOG_HANDLER.containsMessage("Field: bugs"),
                     "bugs field not found");
             assertTrue(TEST_LOG_HANDLER.containsMessage(
-                            "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#ei-expose-rep"),
+                            "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#urf-unread-field"),
                     "bug description URL not found");
         }
 
@@ -238,14 +265,13 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             assertThrows(ExitStatusException.class, op::execute);
-            assertTrue(TEST_LOG_HANDLER.containsMessage("EI_EXPOSE_REP2"), "EI_EXPOSE_REP2 not found");
+            assertTrue(TEST_LOG_HANDLER.containsMessage("EI_EXPOSE_REP"), "EI_EXPOSE_REP not found");
 
             TEST_LOG_HANDLER.clear();
 
             op.exclude("src/test/resources/excludeFilter.xml");
-            assertThrows(ExitStatusException.class, op::execute);
-
-            assertFalse(TEST_LOG_HANDLER.containsMessage("EI_EXPOSE_REP2"), "EI_EXPOSE_REP2 found");
+            assertDoesNotThrow(op::execute);
+            assertFalse(TEST_LOG_HANDLER.containsMessage("EI_EXPOSE_REP"), "EI_EXPOSE_REP found");
         }
 
         @Test

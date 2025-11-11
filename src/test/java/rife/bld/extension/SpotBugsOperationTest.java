@@ -369,15 +369,6 @@ class SpotBugsOperationTest {
         }
 
         @Test
-        void executeWithoutProject() {
-            var op = new SpotBugsOperation();
-            var e = assertThrows(Exception.class, op::execute);
-            assertInstanceOf(IllegalArgumentException.class, e);
-            assertTrue(e.getMessage().contains("A project must be specified."),
-                    "message is " + e.getMessage());
-        }
-
-        @Test
         void executeWithoutSourcePath() {
             var op = newBaseOperation();
             op.sourcePath().clear();
@@ -553,7 +544,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             op.auxClasspath(List.of(path1, path2));
-            assertEquals(3, op.auxClasspath().size(), "size is not 3");
+            assertEquals(5, op.auxClasspath().size(), "size is not 5");
             assertTrue(op.auxClasspath().contains(path1), path1 + " not found");
             assertTrue(op.auxClasspath().contains(path2), path2 + " not found");
         }

@@ -98,7 +98,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     private File output_ = new File("spotbugs.xml");
     private boolean progress_;
     private String projectName_;
-    private BaseProject project_;
     private boolean relaxed_;
     private String release_;
     private File sarif_;
@@ -106,6 +105,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     private File sourceInfo_;
     private File spotBugsJar_;
     private boolean timestampNow_;
+    private File workDirectory_;
     private boolean workHard_;
 
     /**
@@ -142,301 +142,297 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     protected List<String> executeConstructProcessCommandList() {
         List<String> cmd = new ArrayList<>();
 
-        if (project_ == null) {
-            throw new IllegalArgumentException("A project must be specified.");
+        var jar = findSpotBugsJar();
+        if (jar.isEmpty()) {
+            throw new IllegalArgumentException(INVALID_SPOTBUGS_LOCATION);
         } else {
-            var jar = findSpotBugsJar();
-            if (jar.isEmpty()) {
-                throw new IllegalArgumentException(INVALID_SPOTBUGS_LOCATION);
-            } else {
-                if (!output_.getParentFile().exists() && !output_.getParentFile().mkdirs()) {
-                    throw new RuntimeException("Could not create output directory: " + output_.getParentFile());
-                }
+            if (!output_.getParentFile().exists() && !output_.getParentFile().mkdirs()) {
+                throw new RuntimeException("Could not create output directory: " + output_.getParentFile());
+            }
 
-                File auxFile;
+            File auxFile;
+            try {
+                auxFile = createTempFile("aux");
+            } catch (IOException e) {
+                throw new RuntimeException("Could not create auxiliary classpath file", e);
+            }
+
+            File analyzeFile;
+            try {
+                analyzeFile = createTempFile("analyzeFile");
+            } catch (IOException e) {
+                throw new RuntimeException("Could not create analyzeFile file", e);
+            }
+
+            // Java
+            cmd.add(javaTool());
+
+            // jvmArgs
+            cmd.addAll(jvmArgs_);
+
+            // maxHeapSize
+            if (maxHeap_ > 0) {
+                cmd.add("-Xmx");
+                cmd.add(maxHeap_ + "m");
+            }
+
+            // debug
+            if (debug_) {
+                cmd.add("-Dfindbugs.debug=true");
+            }
+
+            // SpotBugs
+            cmd.add("-jar");
+            cmd.add(jar);
+
+            // textui
+            cmd.add("-textui");
+
+            // quiet
+            if (silent()) {
+                cmd.add("-quiet");
+            }
+
+            // timestampNow
+            if (timestampNow_) {
+                cmd.add("-timestampNow");
+            }
+
+            // projectName
+            if (projectName_ != null) {
+                cmd.add("-projectName");
+                cmd.add(projectName_);
+            }
+
+            // effort
+            if (effort_ != null) {
+                cmd.add("-effort:" + effort_.name().toLowerCase());
+            }
+
+            // adjustExperimental
+            if (adjustExperimental_) {
+                cmd.add("-adjustExperimental");
+            }
+
+            // workHard
+            if (workHard_) {
+                cmd.add("-workHard");
+            }
+
+            // longBugCodes
+            if (longBugCodes_) {
+                cmd.add("-longBugCodes");
+            }
+
+            // progress
+            if (progress_) {
+                cmd.add("-progress");
+            }
+
+            // release
+            if (release_ != null) {
+                cmd.add("-release");
+                cmd.add(release_);
+            }
+
+            // experimental
+            if (experimental_) {
+                cmd.add("-experimental");
+            }
+
+            // low
+            if (low_) {
+                cmd.add("-low");
+            }
+
+            // medium
+            if (medium_) {
+                cmd.add("-medium");
+            }
+
+            // high
+            if (high_) {
+                cmd.add("-high");
+            }
+
+            // maxRank
+            if (maxRank_ > 0) {
+                cmd.add("-maxRank");
+                cmd.add(String.valueOf(maxRank_));
+            }
+
+            // dontCombineWarnings
+            if (dontCombineWarnings_) {
+                cmd.add("-dontCombineWarnings");
+            }
+
+            // sortByClass
+            if (sortByClass_) {
+                cmd.add("-sortByClass");
+            }
+
+            // relaxed
+            if (relaxed_) {
+                cmd.add("-relaxed");
+            }
+
+            // sourceInfo
+            if (sourceInfo_ != null) {
+                cmd.add("-sourceInfo");
+                cmd.add(sourceInfo_.getAbsolutePath());
+            }
+
+            // projectName
+            if (projectName_ != null) {
+                cmd.add("-projectName");
+                cmd.add(projectName_);
+            }
+
+            // nested
+            if (nested_) {
+                cmd.add("-nested:true");
+            }
+
+            // html
+            if (html_ != null) {
+                if (htmlXsl_ != null) {
+                    cmd.add("-html:" + htmlXsl_ + "=" + html_.getAbsolutePath());
+                } else {
+                    cmd.add("-html=" + html_.getAbsolutePath());
+                }
+            }
+
+            // sarif
+            if (sarif_ != null) {
+                cmd.add("-sarif=" + sarif_.getAbsolutePath());
+            }
+
+            // emacs
+            if (emacs_ != null) {
+                cmd.add("-emacs=" + emacs_.getAbsolutePath());
+            }
+
+            // bugCategories
+            if (!bugCategories_.isEmpty()) {
+                cmd.add("-bugCategories");
+                cmd.add(String.join(",", bugCategories_));
+            }
+
+            // onlyAnalyze
+            if (!onlyAnalyze_.isEmpty()) {
+                cmd.add("-onlyAnalyze");
+                cmd.add(String.join(",", onlyAnalyze_));
+            }
+
+            // excludeBugs
+            if (excludeBugs_ != null) {
+                cmd.add("-excludeBugs");
+                cmd.add(excludeBugs_.getAbsolutePath());
+            }
+
+            // exclude
+            if (exclude_ != null) {
+                cmd.add("-exclude");
+                cmd.add(exclude_.getAbsolutePath());
+            }
+
+            // include
+            if (include_ != null) {
+                cmd.add("-include");
+                cmd.add(include_.getAbsolutePath());
+            }
+
+            // applySuppression
+            if (applySuppression_) {
+                cmd.add("-applySuppression");
+            }
+
+            // visitors
+            if (!visitors_.isEmpty()) {
+                cmd.add("-visitors");
+                cmd.add(String.join(",", visitors_));
+            }
+
+            // chooseVisitors
+            if (!chooseVisitors_.isEmpty()) {
+                cmd.add("-chooseVisitors");
+                cmd.add(String.join(",", chooseVisitors_));
+            }
+
+            // omitVisitors
+            if (!omitVisitors_.isEmpty()) {
+                cmd.add("-omitVisitors");
+                cmd.add(String.join(",", omitVisitors_));
+            }
+
+            // choosePlugins
+            if (!choosePlugins_.isEmpty()) {
+                cmd.add("-choosePlugins");
+                cmd.add(String.join(",", choosePlugins_));
+            }
+
+            // adjustPriority
+            if (!adjustPriority_.isEmpty()) {
+                cmd.add("-adjustPriority");
+                cmd.add(String.join(",", adjustPriority_));
+            }
+
+            // noClassOk
+            if (noClassOk_) {
+                cmd.add("-noClassOk");
+            }
+
+            // bugReporters
+            if (!bugReporters_.isEmpty()) {
+                cmd.add("-bugReporters");
+                cmd.add(String.join(",", bugReporters_));
+            }
+
+            // pluginList
+            if (!pluginList_.isEmpty()) {
+                cmd.add("-pluginList");
+                cmd.add(String.join(":", pluginList_));
+            }
+
+            // output
+            cmd.add("-xml:withMessages=" + output_.getAbsolutePath());
+
+            // auxClassPathFromFile
+            if (!auxClasspath_.isEmpty()) {
                 try {
-                    auxFile = createTempFile("aux");
+                    writeLinesToFile(auxClasspath_, auxFile);
                 } catch (IOException e) {
-                    throw new RuntimeException("Could not create auxiliary classpath file", e);
+                    throw new RuntimeException("Could not write auxiliary classpath file", e);
                 }
+                cmd.add("-auxclasspathFromFile");
+                cmd.add(auxFile.getAbsolutePath());
 
-                File analyzeFile;
+                log(EXECUTE_METHOD_NAME, Level.INFO, "auxclasspath" +
+                        auxClasspath_.stream().map(this::projectRelativePath).toList());
+            }
+
+            // sourcepath
+            if (!sourcePath_.isEmpty()) {
+                cmd.add("-sourcepath");
+                cmd.add(String.join(File.pathSeparator, sourcePath_));
+
+                log(EXECUTE_METHOD_NAME, Level.INFO, "sourcepath" +
+                        sourcePath_.stream().map(this::projectRelativePath).toList());
+            }
+
+            // analyzeFromFile
+            if (!analyze_.isEmpty()) {
+                var analyzeList = analyze_.stream().map(File::getAbsolutePath).toList();
                 try {
-                    analyzeFile = createTempFile("analyzeFile");
+                    writeLinesToFile(analyzeList, analyzeFile);
                 } catch (IOException e) {
-                    throw new RuntimeException("Could not create analyzeFile file", e);
+                    throw new RuntimeException("Could not write analyze file", e);
                 }
+                cmd.add("-analyzeFromFile");
+                cmd.add(analyzeFile.getAbsolutePath());
 
-                // Java
-                cmd.add(javaTool());
-
-                // jvmArgs
-                cmd.addAll(jvmArgs_);
-
-                // maxHeapSize
-                if (maxHeap_ > 0) {
-                    cmd.add("-Xmx");
-                    cmd.add(maxHeap_ + "m");
-                }
-
-                // debug
-                if (debug_) {
-                    cmd.add("-Dfindbugs.debug=true");
-                }
-
-                // SpotBugs
-                cmd.add("-jar");
-                cmd.add(jar);
-
-                // textui
-                cmd.add("-textui");
-
-                // quiet
-                if (silent()) {
-                    cmd.add("-quiet");
-                }
-
-                // timestampNow
-                if (timestampNow_) {
-                    cmd.add("-timestampNow");
-                }
-
-                // projectName
-                if (projectName_ != null) {
-                    cmd.add("-projectName");
-                    cmd.add(projectName_);
-                }
-
-                // effort
-                if (effort_ != null) {
-                    cmd.add("-effort:" + effort_.name().toLowerCase());
-                }
-
-                // adjustExperimental
-                if (adjustExperimental_) {
-                    cmd.add("-adjustExperimental");
-                }
-
-                // workHard
-                if (workHard_) {
-                    cmd.add("-workHard");
-                }
-
-                // longBugCodes
-                if (longBugCodes_) {
-                    cmd.add("-longBugCodes");
-                }
-
-                // progress
-                if (progress_) {
-                    cmd.add("-progress");
-                }
-
-                // release
-                if (release_ != null) {
-                    cmd.add("-release");
-                    cmd.add(release_);
-                }
-
-                // experimental
-                if (experimental_) {
-                    cmd.add("-experimental");
-                }
-
-                // low
-                if (low_) {
-                    cmd.add("-low");
-                }
-
-                // medium
-                if (medium_) {
-                    cmd.add("-medium");
-                }
-
-                // high
-                if (high_) {
-                    cmd.add("-high");
-                }
-
-                // maxRank
-                if (maxRank_ > 0) {
-                    cmd.add("-maxRank");
-                    cmd.add(String.valueOf(maxRank_));
-                }
-
-                // dontCombineWarnings
-                if (dontCombineWarnings_) {
-                    cmd.add("-dontCombineWarnings");
-                }
-
-                // sortByClass
-                if (sortByClass_) {
-                    cmd.add("-sortByClass");
-                }
-
-                // relaxed
-                if (relaxed_) {
-                    cmd.add("-relaxed");
-                }
-
-                // sourceInfo
-                if (sourceInfo_ != null) {
-                    cmd.add("-sourceInfo");
-                    cmd.add(sourceInfo_.getAbsolutePath());
-                }
-
-                // projectName
-                if (projectName_ != null) {
-                    cmd.add("-projectName");
-                    cmd.add(projectName_);
-                }
-
-                // nested
-                if (nested_) {
-                    cmd.add("-nested:true");
-                }
-
-                // html
-                if (html_ != null) {
-                    if (htmlXsl_ != null) {
-                        cmd.add("-html:" + htmlXsl_ + "=" + html_.getAbsolutePath());
-                    } else {
-                        cmd.add("-html=" + html_.getAbsolutePath());
-                    }
-                }
-
-                // sarif
-                if (sarif_ != null) {
-                    cmd.add("-sarif=" + sarif_.getAbsolutePath());
-                }
-
-                // emacs
-                if (emacs_ != null) {
-                    cmd.add("-emacs=" + emacs_.getAbsolutePath());
-                }
-
-                // bugCategories
-                if (!bugCategories_.isEmpty()) {
-                    cmd.add("-bugCategories");
-                    cmd.add(String.join(",", bugCategories_));
-                }
-
-                // onlyAnalyze
-                if (!onlyAnalyze_.isEmpty()) {
-                    cmd.add("-onlyAnalyze");
-                    cmd.add(String.join(",", onlyAnalyze_));
-                }
-
-                // excludeBugs
-                if (excludeBugs_ != null) {
-                    cmd.add("-excludeBugs");
-                    cmd.add(excludeBugs_.getAbsolutePath());
-                }
-
-                // exclude
-                if (exclude_ != null) {
-                    cmd.add("-exclude");
-                    cmd.add(exclude_.getAbsolutePath());
-                }
-
-                // include
-                if (include_ != null) {
-                    cmd.add("-include");
-                    cmd.add(include_.getAbsolutePath());
-                }
-
-                // applySuppression
-                if (applySuppression_) {
-                    cmd.add("-applySuppression");
-                }
-
-                // visitors
-                if (!visitors_.isEmpty()) {
-                    cmd.add("-visitors");
-                    cmd.add(String.join(",", visitors_));
-                }
-
-                // chooseVisitors
-                if (!chooseVisitors_.isEmpty()) {
-                    cmd.add("-chooseVisitors");
-                    cmd.add(String.join(",", chooseVisitors_));
-                }
-
-                // omitVisitors
-                if (!omitVisitors_.isEmpty()) {
-                    cmd.add("-omitVisitors");
-                    cmd.add(String.join(",", omitVisitors_));
-                }
-
-                // choosePlugins
-                if (!choosePlugins_.isEmpty()) {
-                    cmd.add("-choosePlugins");
-                    cmd.add(String.join(",", choosePlugins_));
-                }
-
-                // adjustPriority
-                if (!adjustPriority_.isEmpty()) {
-                    cmd.add("-adjustPriority");
-                    cmd.add(String.join(",", adjustPriority_));
-                }
-
-                // noClassOk
-                if (noClassOk_) {
-                    cmd.add("-noClassOk");
-                }
-
-                // bugReporters
-                if (!bugReporters_.isEmpty()) {
-                    cmd.add("-bugReporters");
-                    cmd.add(String.join(",", bugReporters_));
-                }
-
-                // pluginList
-                if (!pluginList_.isEmpty()) {
-                    cmd.add("-pluginList");
-                    cmd.add(String.join(":", pluginList_));
-                }
-
-                // output
-                cmd.add("-xml:withMessages=" + output_.getAbsolutePath());
-
-                // auxClassPathFromFile
-                if (!auxClasspath_.isEmpty()) {
-                    try {
-                        writeLinesToFile(auxClasspath_, auxFile);
-                    } catch (IOException e) {
-                        throw new RuntimeException("Could not write auxiliary classpath file", e);
-                    }
-                    cmd.add("-auxclasspathFromFile");
-                    cmd.add(auxFile.getAbsolutePath());
-
-                    log(EXECUTE_METHOD_NAME, Level.INFO, "auxclasspath" +
-                            auxClasspath_.stream().map(this::projectRelativePath).toList());
-                }
-
-                // sourcepath
-                if (!sourcePath_.isEmpty()) {
-                    cmd.add("-sourcepath");
-                    cmd.add(String.join(File.pathSeparator, sourcePath_));
-
-                    log(EXECUTE_METHOD_NAME, Level.INFO, "sourcepath" +
-                            sourcePath_.stream().map(this::projectRelativePath).toList());
-                }
-
-                // analyzeFromFile
-                if (!analyze_.isEmpty()) {
-                    var analyzeList = analyze_.stream().map(File::getAbsolutePath).toList();
-                    try {
-                        writeLinesToFile(analyzeList, analyzeFile);
-                    } catch (IOException e) {
-                        throw new RuntimeException("Could not write analyze file", e);
-                    }
-                    cmd.add("-analyzeFromFile");
-                    cmd.add(analyzeFile.getAbsolutePath());
-
-                    log(EXECUTE_METHOD_NAME, Level.INFO,
-                            "analyze" + analyzeList.stream().map(this::projectRelativePath).toList());
-                }
+                log(EXECUTE_METHOD_NAME, Level.INFO,
+                        "analyze" + analyzeList.stream().map(this::projectRelativePath).toList());
             }
         }
 
@@ -466,8 +462,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     @Override
     public SpotBugsOperation fromProject(BaseProject project) {
-        project_ = project;
-
+        workDirectory_ = project.workDirectory();
         output_ = Path.of(
                         project.buildDirectory().getAbsolutePath(),
                         "reports",
@@ -533,7 +528,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         }
     }
 
-    private static List<SpotBug> parseSpotBugsXml(Path xmlPath) throws IOException {
+    private static SpotBugsResult parseSpotBugsXml(Path xmlPath) throws IOException {
         List<SpotBug> list = new ArrayList<>();
         var dbf = DocumentBuilderFactory.newInstance();
         dbf.setNamespaceAware(false);
@@ -543,6 +538,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             var doc = db.parse(Files.newInputStream(xmlPath));
             var xpf = XPathFactory.newInstance();
             var xpath = xpf.newXPath();
+
+            var summary = (Node) xpath.evaluate("/BugCollection/FindBugsSummary", doc, XPathConstants.NODE);
+            var totalBugs = parseIntOrDefault(xpath.evaluate("@total_bugs", summary), 0);
+            var totalClasses = parseIntOrDefault(xpath.evaluate("@total_classes", summary), 0);
 
             var bugInstances = (NodeList) xpath.evaluate("/BugCollection/BugInstance", doc,
                     XPathConstants.NODESET);
@@ -605,11 +604,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                         startLine,
                         endLine));
             }
+
+            return new SpotBugsResult(list, totalBugs, totalClasses);
         } catch (XPathExpressionException | ParserConfigurationException | SAXException e) {
             throw new IOException("Unable to parse XML report", e);
         }
-
-        return list;
     }
 
     private static void writeLinesToFile(Collection<String> lines, File file) throws IOException {
@@ -2377,12 +2376,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     private String projectRelativePath(String path) {
-        if (path == null || project_ == null) {
+        if (path == null || workDirectory_ == null) {
             return path;
         }
 
-        var prefix = project_.workDirectory().getAbsolutePath() + File.separator;
-        if (path.startsWith(project_.workDirectory().getAbsolutePath())) {
+        var prefix = workDirectory_.getAbsolutePath() + File.separator;
+        if (path.startsWith(workDirectory_.getAbsolutePath())) {
             return path.substring(prefix.length());
         }
 

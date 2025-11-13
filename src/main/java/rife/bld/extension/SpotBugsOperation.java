@@ -2347,6 +2347,18 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         return "";
     }
 
+    private String formatLineNumber(int startLine) {
+        if (startLine > 0) {
+            if (includeLineNumber_) {
+                return ":" + startLine;
+            } else {
+                return " [Line " + startLine + ']';
+            }
+        } else {
+            return "";
+        }
+    }
+
     private void log(String method, Level level, String message) {
         if (!silent() && LOGGER.isLoggable(level)) {
             LOGGER.logp(level, getClass().getName(), method, LOG_PREFIX + message);
@@ -2404,8 +2416,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
     private String sourcePathToUri(String path, int startLine) {
         return findExistingSourceFile(path)
-                .map(resolvedPath -> resolvedPath.toUri() +
-                        (includeLineNumber_ ? ":" + startLine : " [Line " + startLine + ']'))
+                .map(resolvedPath -> resolvedPath.toUri() + formatLineNumber(startLine))
                 .orElse(path);
     }
 

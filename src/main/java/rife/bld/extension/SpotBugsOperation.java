@@ -16,6 +16,8 @@
 
 package rife.bld.extension;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
@@ -34,9 +36,12 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -46,6 +51,7 @@ import java.util.logging.Logger;
  * @author <a href="https://erik.thauvin.net/">Erik C. Thauvin</a>
  * @since 1.0
  */
+@SuppressFBWarnings("EXS_EXCEPTION_SOFTENING_NO_CHECKED")
 public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperation> {
     /**
      * The error message indicating that the provided SpotBugs location is invalid.
@@ -56,7 +62,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     private static final Logger LOGGER = Logger.getLogger(SpotBugsOperation.class.getName());
     private static final String LOG_PREFIX = "[spotbugs] ";
     private static final String PRINT_BUGS_METHOD_NAME = "printBugs";
-
+    private static final String SPOTBUGS_HOST = "spotbugs.readthedocs.io";
+    private static final String SPOTBUGS_SARIF = "spotbugs.sarif";
+    private static final String SPOTBUGS_XML = "spotbugs.xml";
     private final Collection<String> adjustPriority_ = new ArrayList<>();
     private final Collection<File> analyze_ = new ArrayList<>();
     private final Collection<String> auxClasspath_ = new ArrayList<>();
@@ -70,7 +78,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     private final Collection<String> pluginList_ = new ArrayList<>();
     private final Collection<String> sourcePath_ = new ArrayList<>();
     private final Collection<String> visitors_ = new ArrayList<>();
-
     private boolean adjustExperimental_;
     private boolean applySuppression_;
     private boolean debug_;
@@ -95,12 +102,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     private boolean medium_;
     private boolean nested_;
     private boolean noClassOk_;
-    private File output_ = new File("spotbugs.xml");
+    private File output_ = new File(SPOTBUGS_XML);
     private boolean progress_;
     private String projectName_;
     private boolean relaxed_;
     private String release_;
-    private File sarif_;
+    private File sarif_ = new File(SPOTBUGS_SARIF);
     private boolean sortByClass_;
     private File sourceInfo_;
     private File spotBugsJar_;
@@ -117,23 +124,18 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @throws ExitStatusException     when the exit status was changed during the operation
      */
     @Override
+    @SuppressFBWarnings("BED_HIERARCHICAL_EXCEPTION_DECLARATION")
     public void execute() throws IOException, FileUtilsErrorException, InterruptedException, ExitStatusException {
         super.execute();
 
-        var result = parseSpotBugsXml(output_.toPath());
+        var spotBugs = parseSpotBugsXml(output_.toPath());
 
-        log(EXECUTE_METHOD_NAME, Level.FINEST, result.toString());
+        log(EXECUTE_METHOD_NAME, Level.FINEST, spotBugs.toString());
 
-        if (!silent()) {
-            if (result.totalBugs() != result.bugs.size()) {
-                log(EXECUTE_METHOD_NAME, Level.SEVERE,
-                        "Total bugs parsed do not match the number of bugs found. Please report this issue," +
-                                "and include a copy of the XML report if feasible.");
-            }
-            printBugs(result);
-        }
 
-        if (!ignoreFailures_ && !result.bugs.isEmpty()) {
+        printBugs(spotBugs);
+
+        if (!ignoreFailures_ && !spotBugs.isEmpty()) {
             throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
         }
     }
@@ -145,6 +147,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     @Override
     @SuppressWarnings("PMD.AvoidThrowingRawExceptionTypes")
+    @SuppressFBWarnings({"CC_CYCLOMATIC_COMPLEXITY", "PSC_PRESIZE_COLLECTIONS"})
     protected List<String> executeConstructProcessCommandList() {
         List<String> cmd = new ArrayList<>();
 
@@ -456,10 +459,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *     <li>
      *         {@link #auxClasspath() auxClasspath} to {@link BaseProject#compileMainClasspath() compileMainClasspath}
      *     </li>
-     *     <li>{@link #projectName() projectName} to {@link BaseProject#name() the project name}</li>
+     *     <li>{@link #nested() nested} and {@link #timestampNow() timestampNow} to {@code true}</li>
+     *     <li>{@link #output() output} to {@code reports/spotbugs/spotbugs.xml} in the
+     *     {@link BaseProject#buildDirectory() buildDirectory}</li>
+     *     <li>{@link #projectName() projectName} to the {@link BaseProject#name() project name}</li>
+     *     <li>{@link #sarif() sarif} to {@code reports/spotbugs/spotbugs.sarif) in the</li>
+     *     {@link BaseProject#buildDirectory() buildDirectory}</li>
      *     <li>{@link #sourcePath() sourcePath} to {@link BaseProject#srcMainJavaDirectory() srcMainJavaDirectory}
      *     and {@link BaseProject#srcMainResourcesDirectory() srcMainResourceDirectory}</li>
-     *     <li>{@link #nested() nested} and {@link #timestampNow() timestampNow} to {@code true}</li>
      * </ul>
      *
      * @param project the project to configure the compile operation from
@@ -469,12 +476,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     @Override
     public SpotBugsOperation fromProject(BaseProject project) {
         workDirectory_ = project.workDirectory();
-        output_ = Path.of(
-                        project.buildDirectory().getAbsolutePath(),
-                        "reports",
-                        "spotbugs",
-                        "main.xml")
-                .toFile();
+
+        var reportsDir = Path.of(project.buildDirectory().getAbsolutePath(), "reports", "spotbugs").toFile();
+        output_ = new File(reportsDir, SPOTBUGS_XML);
+        sarif_ = new File(reportsDir, SPOTBUGS_SARIF);
+
         analyze_.add(project.buildMainDirectory());
         sourcePath_.add(project.srcMainResourcesDirectory().getAbsolutePath());
         sourcePath_.add(project.srcMainJavaDirectory().getAbsolutePath());
@@ -491,50 +497,45 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         return this;
     }
 
-    private static String evaluateXPathWithFallbacks(XPath xpath, Node node, String... expressions)
-            throws XPathExpressionException {
-        for (var expr : expressions) {
-            var result = xpath.evaluate(expr, node);
-            if (result != null && !result.isEmpty()) {
-                return result;
+    private String findSpotBugsJar() {
+        if (spotBugsJar_ != null && spotBugsJar_.exists()) {
+            return spotBugsJar_.getAbsolutePath();
+        }
+
+        if (home_ != null) {
+            var jar = home_.resolve("lib").resolve("spotbugs.jar");
+            if (Files.exists(jar)) {
+                return jar.toAbsolutePath().toString();
             }
         }
+
         return "";
     }
 
-    /**
-     * Parses the given string into an integer.
-     * <p>
-     * If the string cannot be parsed, returns a default value of {@code -1}.
-     *
-     * @param s the string to be parsed into an integer
-     * @return the parsed integer value, or {@code -1} if parsing fails
-     */
-    public static int parseIntOrDefault(String s) {
-        return parseIntOrDefault(s, -1);
+    private File createTempFile(String prefix) throws IOException {
+        var tempFile = Files.createTempFile("bld-spotbugs-" + prefix + '-', ".tmp").toFile();
+        tempFile.deleteOnExit();
+        return tempFile;
     }
 
-    /**
-     * Parses the given string into an integer.
-     * <p>
-     * If the string is null, empty, or cannot be parsed as an integer, it returns the specified default value.
-     *
-     * @param s            the string to parse as an integer
-     * @param defaultValue the value to return if parsing fails
-     * @return the parsed integer value, or the default value if parsing fails
-     */
-    public static int parseIntOrDefault(String s, int defaultValue) {
-        if (s == null || s.isEmpty()) {
-            return defaultValue;
-        }
-        try {
-            return Integer.parseInt(s);
-        } catch (NumberFormatException e) {
-            return defaultValue;
-        }
+    private static void writeLinesToFile(Collection<String> lines, File file) throws IOException {
+        Files.write(file.toPath(), lines);
     }
 
-    private static SpotBugsResult parseSpotBugsXml(Path xmlPath) throws IOException {
+    private String projectRelativePath(String path) {
+        if (path == null || workDirectory_ == null) {
+            return path;
+        }
+
+        var prefix = workDirectory_.getAbsolutePath() + File.separator;
+        if (path.startsWith(workDirectory_.getAbsolutePath())) {
+            return path.substring(prefix.length());
+        }
+
+        return path;
+    }
+
+    private static List<SpotBug> parseSpotBugsXml(Path xmlPath) throws IOException {
         List<SpotBug> list = new ArrayList<>();
         var dbf = DocumentBuilderFactory.newInstance();
         dbf.setNamespaceAware(false);
@@ -544,10 +545,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             var doc = db.parse(Files.newInputStream(xmlPath));
             var xpf = XPathFactory.newInstance();
             var xpath = xpf.newXPath();
-
-            var summary = (Node) xpath.evaluate("/BugCollection/FindBugsSummary", doc, XPathConstants.NODE);
-            var totalBugs = parseIntOrDefault(xpath.evaluate("@total_bugs", summary), 0);
-            var totalClasses = parseIntOrDefault(xpath.evaluate("@total_classes", summary), 0);
 
             var bugInstances = (NodeList) xpath.evaluate("/BugCollection/BugInstance", doc,
                     XPathConstants.NODESET);
@@ -611,14 +608,177 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                         endLine));
             }
 
-            return new SpotBugsResult(list, totalBugs, totalClasses);
+            return list;
         } catch (XPathExpressionException | ParserConfigurationException | SAXException e) {
             throw new IOException("Unable to parse XML report", e);
         }
     }
 
-    private static void writeLinesToFile(Collection<String> lines, File file) throws IOException {
-        Files.write(file.toPath(), lines);
+    private void log(String method, Level level, String message) {
+        if (!silent() && LOGGER.isLoggable(level)) {
+            LOGGER.logp(level, getClass().getName(), method, LOG_PREFIX + message);
+        }
+    }
+
+    private void printBugs(Collection<SpotBug> bugs) {
+        if (bugs.isEmpty()) {
+            log(PRINT_BUGS_METHOD_NAME, Level.WARNING, "No potential bugs found");
+        } else {
+            log(PRINT_BUGS_METHOD_NAME, Level.WARNING,
+                    String.format(
+                            "Found %d potential bug%s",
+                            bugs.size(),
+                            bugs.size() == 1 ? "" : "s")
+            );
+
+            var bugsMaps = new HashMap<String, String>();
+            try {
+                bugsMaps.putAll(parseSpotBugsSarif(sarif_));
+                log("printBugs", Level.FINEST, bugsMaps.toString());
+            } catch (IOException e) {
+                log("printBugs", Level.WARNING,
+                        String.format("Unabled to parse SARIF report: %s", e.getMessage()));
+            }
+
+            for (var result : bugs) {
+                var message = String.format("%s%n" +
+                                "    %s (%s)%n" +
+                                "    %s%sClass: %s, Priority: %s, Rank: %s, Category: %s%n" +
+                                "        --> %s",
+                        sourcePathToUri(result.sourcePath(), result.startLine),
+                        result.type,
+                        bugsMaps.getOrDefault(result.type, "n/a"),
+                        result.method.isBlank() ? "" : "Method: " + result.method + ", ",
+                        result.field.isBlank() ? "" : "Field: " + result.field + ", ",
+                        result.className,
+                        result.priority,
+                        result.rank,
+                        result.category,
+                        detailedMessage_ ? result.message : result.shortMessage);
+
+                log(PRINT_BUGS_METHOD_NAME, Level.WARNING, message);
+            }
+        }
+    }
+
+    /**
+     * Parses the given string into an integer.
+     * <p>
+     * If the string is null, empty, or cannot be parsed as an integer, it returns the specified default value.
+     *
+     * @param s            the string to parse as an integer
+     * @param defaultValue the value to return if parsing fails
+     * @return the parsed integer value, or the default value if parsing fails
+     */
+    public static int parseIntOrDefault(String s, int defaultValue) {
+        if (s == null || s.isEmpty()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private static String evaluateXPathWithFallbacks(XPath xpath, Node node, String... expressions)
+            throws XPathExpressionException {
+        for (var expr : expressions) {
+            var result = xpath.evaluate(expr, node);
+            if (result != null && !result.isEmpty()) {
+                return result;
+            }
+        }
+        return "";
+    }
+
+    /**
+     * Parses the given string into an integer.
+     * <p>
+     * If the string cannot be parsed, returns a default value of {@code -1}.
+     *
+     * @param s the string to be parsed into an integer
+     * @return the parsed integer value, or {@code -1} if parsing fails
+     */
+    public static int parseIntOrDefault(String s) {
+        return parseIntOrDefault(s, -1);
+    }
+
+    private static Map<String, String> parseSpotBugsSarif(File sarifFile) throws IOException {
+        Map<String, String> bugMap = new ConcurrentHashMap<>();
+
+        if (sarifFile != null && sarifFile.exists()) {
+            var mapper = new ObjectMapper();
+            var root = mapper.readTree(sarifFile);
+
+            var runs = root.get("runs");
+            if (runs != null && runs.isArray()) {
+                for (var run : runs) {
+                    var tool = run.get("tool");
+                    if (tool != null) {
+                        var driver = tool.get("driver");
+                        if (driver != null) {
+                            var rules = driver.get("rules");
+                            if (rules != null && rules.isArray()) {
+                                for (var rule : rules) {
+                                    var id = rule.has("id") ? rule.get("id").asText() : null;
+                                    var helpUri = rule.has("helpUri") ? rule.get("helpUri").asText() : null;
+
+                                    if (helpUri != null) {
+                                        helpUri = normalizeSpotBugsUri(helpUri);
+                                    }
+                                    if (id != null) {
+                                        bugMap.put(id, helpUri);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return bugMap;
+    }
+
+    private String sourcePathToUri(String path, int startLine) {
+        return findExistingSourceFile(path)
+                .map(resolvedPath -> resolvedPath.toUri() + formatLineNumber(startLine))
+                .orElse(path);
+    }
+
+    private static String normalizeSpotBugsUri(String helpUri) {
+        try {
+            var uri = new URI(helpUri);
+            if (uri.getHost() != null && SPOTBUGS_HOST.equalsIgnoreCase(uri.getHost())) {
+                var frag = uri.getFragment();
+                if (frag != null) {
+                    return helpUri.replace(frag, frag.toLowerCase().replace('_', '-'));
+                }
+            }
+        } catch (URISyntaxException ignored) {
+            // return original
+        }
+        return helpUri;
+    }
+
+    private Optional<Path> findExistingSourceFile(String relativePath) {
+        return sourcePath_.stream()
+                .map(sourcePath -> Path.of(sourcePath, relativePath))
+                .filter(path -> path.toFile().exists())
+                .findFirst();
+    }
+
+    private String formatLineNumber(int startLine) {
+        if (startLine > 0) {
+            if (includeLineNumber_) {
+                return ":" + startLine;
+            } else {
+                return " [Line " + startLine + ']';
+            }
+        } else {
+            return "";
+        }
     }
 
     /**
@@ -736,6 +896,17 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 .map(this::toFile)
                 .forEach(analyze_::add);
         return this;
+    }
+
+    @SuppressFBWarnings("ITC_INHERITANCE_TYPE_CHECKING")
+    private File toFile(Object item) {
+        if (item instanceof File) {
+            return (File) item;
+        } else if (item instanceof Path) {
+            return ((Path) item).toFile();
+        } else {
+            return new File(item.toString());
+        }
     }
 
     /**
@@ -1220,13 +1391,17 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *     <li>
      *         {@link #auxClasspath() auxClasspath} to {@link BaseProject#compileMainClasspath() compileMainClasspath}
      *     </li>
-     *     <li>{@link #projectName() projectName} to {@link BaseProject#name() the project name}</li>
-     *     <li>{@link #sourcePath() sourcePath} to {@link BaseProject#srcMainJavaDirectory() srcMainJavaDirectory}
+     *     <li>{@link #output() output} to {@code reports/spotbugs/spotbugs.xml} in the
+     *     {@link BaseProject#buildDirectory() buildDirectory}</li>
+     *     <li>{@link #projectName() projectName} to the {@link BaseProject#name() project name}</li>
+     *     <li>{@link #sarif() sarif} to {@code reports/spotbugs/spotbugs.sarif) in the</li>
+     *     {@link BaseProject#buildDirectory() buildDirectory}</li>     *     <li>{@link #sourcePath() sourcePath} to {@link BaseProject#srcMainJavaDirectory() srcMainJavaDirectory}
      *     and {@link BaseProject#srcMainResourcesDirectory() srcMainResourceDirectory}</li>
      *     <li>{@link #timestampNow() timestampNow} to {@code true}</li>
      * </ul>
      * <p>
      * If {@code includeTest} is enabled, the {@code test} directories are also included.
+     * </p>
      *
      * @param project     the project to configure the compile operation from
      * @param includeTest set to {@code true} to include test directories, {@code false} otherwise
@@ -1237,12 +1412,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         fromProject(project);
 
         if (includeTest) {
-            output_ = Path.of(
-                            project.buildDirectory().getAbsolutePath(),
-                            "reports",
-                            "spotbugs",
-                            "all.xml")
-                    .toFile();
+            var reportsDir =
+                    Path.of(project.buildDirectory().getAbsolutePath(), "reports", "spotbugs").toFile();
+            output_ = new File(reportsDir, SPOTBUGS_XML);
+            sarif_ = new File(reportsDir, SPOTBUGS_SARIF);
+
             analyze_.add(project.buildTestDirectory());
             sourcePath_.add(project.srcTestResourcesDirectory().getAbsolutePath());
             sourcePath_.add(project.srcTestJavaDirectory().getAbsolutePath());
@@ -2198,6 +2372,16 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         return this;
     }
 
+    private String toAbsolutePath(Object item) {
+        if (item instanceof File) {
+            return ((File) item).getAbsolutePath();
+        } else if (item instanceof Path) {
+            return ((Path) item).toAbsolutePath().toString();
+        } else {
+            return item.toString();
+        }
+    }
+
     /**
      * Returns the SpotBugs jar file.
      *
@@ -2319,135 +2503,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         return workHard_;
     }
 
-    private File createTempFile(String prefix) throws IOException {
-        var tempFile = Files.createTempFile("bld-spotbugs-" + prefix + '-', ".tmp").toFile();
-        tempFile.deleteOnExit();
-        return tempFile;
-    }
-
-    private Optional<Path> findExistingSourceFile(String relativePath) {
-        return sourcePath_.stream()
-                .map(sourcePath -> Path.of(sourcePath, relativePath))
-                .filter(path -> path.toFile().exists())
-                .findFirst();
-    }
-
-    private String findSpotBugsJar() {
-        if (spotBugsJar_ != null && spotBugsJar_.exists()) {
-            return spotBugsJar_.getAbsolutePath();
-        }
-
-        if (home_ != null) {
-            var jar = home_.resolve("lib").resolve("spotbugs.jar");
-            if (Files.exists(jar)) {
-                return jar.toAbsolutePath().toString();
-            }
-        }
-
-        return "";
-    }
-
-    private String formatLineNumber(int startLine) {
-        if (startLine > 0) {
-            if (includeLineNumber_) {
-                return ":" + startLine;
-            } else {
-                return " [Line " + startLine + ']';
-            }
-        } else {
-            return "";
-        }
-    }
-
-    private void log(String method, Level level, String message) {
-        if (!silent() && LOGGER.isLoggable(level)) {
-            LOGGER.logp(level, getClass().getName(), method, LOG_PREFIX + message);
-        }
-    }
-
-    private void printBugs(SpotBugsResult results) {
-        var bugs = results.bugs();
-        if (bugs.isEmpty()) {
-            log(PRINT_BUGS_METHOD_NAME, Level.WARNING,
-                    String.format("No potential bugs found in %d classes", results.totalClasses));
-        } else {
-            log(PRINT_BUGS_METHOD_NAME, Level.WARNING,
-                    String.format(
-                            "Found %d potential bug%s in %d class%s",
-                            bugs.size(),
-                            bugs.size() == 1 ? "" : "s",
-                            results.totalClasses,
-                            results.totalClasses == 1 ? "" : "es")
-            );
-
-            for (var result : bugs) {
-                var message = String.format("%s%n" +
-                                "    %s (%s)%n" +
-                                "    %s%sClass: %s, Priority: %s, Rank: %s, Category: %s%n" +
-                                "        --> %s",
-                        sourcePathToUri(result.sourcePath(), result.startLine),
-                        result.type,
-                        "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html" + toAnchor(result.type),
-                        result.method.isBlank() ? "" : "Method: " + result.method + ", ",
-                        result.field.isBlank() ? "" : "Field: " + result.field + ", ",
-                        result.className,
-                        result.priority,
-                        result.rank,
-                        result.category,
-                        detailedMessage_ ? result.message : result.shortMessage);
-
-                log(PRINT_BUGS_METHOD_NAME, Level.WARNING, message);
-            }
-        }
-    }
-
-    private String projectRelativePath(String path) {
-        if (path == null || workDirectory_ == null) {
-            return path;
-        }
-
-        var prefix = workDirectory_.getAbsolutePath() + File.separator;
-        if (path.startsWith(workDirectory_.getAbsolutePath())) {
-            return path.substring(prefix.length());
-        }
-
-        return path;
-    }
-
-    private String sourcePathToUri(String path, int startLine) {
-        return findExistingSourceFile(path)
-                .map(resolvedPath -> resolvedPath.toUri() + formatLineNumber(startLine))
-                .orElse(path);
-    }
-
-    private String toAbsolutePath(Object item) {
-        if (item instanceof File) {
-            return ((File) item).getAbsolutePath();
-        } else if (item instanceof Path) {
-            return ((Path) item).toAbsolutePath().toString();
-        } else {
-            return item.toString();
-        }
-    }
-
-    private String toAnchor(String type) {
-        if (type == null || type.isBlank()) {
-            return "";
-        } else {
-            return '#' + type.replace('_', '-').toLowerCase();
-        }
-    }
-
-    private File toFile(Object item) {
-        if (item instanceof File) {
-            return (File) item;
-        } else if (item instanceof Path) {
-            return ((Path) item).toFile();
-        } else {
-            return new File(item.toString());
-        }
-    }
-
     private record SpotBug(
             String type,
             String category,
@@ -2461,11 +2516,5 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             String sourcePath,
             int startLine,
             int endLine) {
-    }
-
-    private record SpotBugsResult(
-            List<SpotBug> bugs,
-            int totalBugs,
-            int totalClasses) {
     }
 }

@@ -46,6 +46,8 @@ public class SpotBugsOperationBuild extends Project {
 
         var junit = version(6, 0, 1);
         scope(compile)
+                .include(dependency("com.fasterxml.jackson.core", "jackson-databind",
+                        version(2, 20, 1)))
                 .include(dependency("com.uwyn.rife2", "bld", version(2, 3, 0)));
         scope(provided)
                 .include(dependency("com.github.spotbugs", "spotbugs-annotations",
@@ -87,6 +89,22 @@ public class SpotBugsOperationBuild extends Project {
                 .signPassphrase(property("sign.passphrase"));
     }
 
+    @Override
+    public void test() throws Exception {
+        var os = System.getProperty("os.name");
+        if (os != null && os.toLowerCase(Locale.US).contains("linux")) {
+            new ExecOperation()
+                    .fromProject(this)
+                    .command("scripts/cliargs.sh")
+                    .execute();
+        }
+
+        var testResultsDir = "build/test-results/test/";
+        var op = testOperation().fromProject(this);
+        op.testToolOptions().reportsDir(new File(testResultsDir));
+        op.execute();
+    }
+
     public static void main(String[] args) {
         new SpotBugsOperationBuild().start(args);
     }
@@ -107,21 +125,5 @@ public class SpotBugsOperationBuild extends Project {
                 .fromProject(this)
                 .failOnSummary(true)
                 .execute();
-    }
-
-    @Override
-    public void test() throws Exception {
-        var os = System.getProperty("os.name");
-        if (os != null && os.toLowerCase(Locale.US).contains("linux")) {
-            new ExecOperation()
-                    .fromProject(this)
-                    .command("scripts/cliargs.sh")
-                    .execute();
-        }
-
-        var testResultsDir = "build/test-results/test/";
-        var op = testOperation().fromProject(this);
-        op.testToolOptions().reportsDir(new File(testResultsDir));
-        op.execute();
     }
 }

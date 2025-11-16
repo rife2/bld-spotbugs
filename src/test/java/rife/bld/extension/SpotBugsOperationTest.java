@@ -235,6 +235,9 @@ class SpotBugsOperationTest {
             assertTrue(TEST_LOG_HANDLER.containsMessage(
                             "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#urf-unread-field"),
                     "bug description URL not found");
+            assertTrue(TEST_LOG_HANDLER.containsMessage(
+                            "//fb-contrib.sourceforge.net/bugdescriptions.html#UAC_UNNECESSARY_API_CONVERSION_FILE_TO_PATH"),
+                    "fb-contrib bug description URL not found");
         }
 
         @Test
@@ -271,6 +274,22 @@ class SpotBugsOperationTest {
 
             op.exclude("src/test/resources/excludeFilter.xml");
             assertDoesNotThrow(op::execute);
+            TEST_LOG_HANDLER.printLogMessages();
+            assertTrue(TEST_LOG_HANDLER.containsExactMessage("[spotbugs] No potential bugs found"));
+        }
+
+        @Test
+        void executeWithExcludeAll() {
+            var op = newBaseOperation();
+
+            assertThrows(ExitStatusException.class, op::execute);
+            assertTrue(TEST_LOG_HANDLER.containsMessage("EI_EXPOSE_REP"), "EI_EXPOSE_REP not found");
+
+            TEST_LOG_HANDLER.clear();
+
+            op = op.exclude("src/test/resources/excludeAllFilter.xml");
+            assertDoesNotThrow(op::execute);
+            TEST_LOG_HANDLER.printLogMessages();
             assertFalse(TEST_LOG_HANDLER.containsMessage("EI_EXPOSE_REP"), "EI_EXPOSE_REP found");
         }
 
@@ -322,7 +341,7 @@ class SpotBugsOperationTest {
         @Test
         void executeWithRank() throws Exception {
             LOGGER.setLevel(Level.WARNING);
-            newBaseOperation().maxRank(10).execute();
+            newBaseOperation().maxRank(6).execute();
             TEST_LOG_HANDLER.printLogMessages();
             assertTrue(TEST_LOG_HANDLER.containsMessage("[spotbugs] No potential bugs found"));
         }
@@ -544,7 +563,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             op.auxClasspath(List.of(path1, path2));
-            assertEquals(5, op.auxClasspath().size(), "size is not 5");
+            assertEquals(8, op.auxClasspath().size(), "size is not 8");
             assertTrue(op.auxClasspath().contains(path1), path1 + " not found");
             assertTrue(op.auxClasspath().contains(path2), path2 + " not found");
         }
@@ -982,7 +1001,7 @@ class SpotBugsOperationTest {
             var project = new BaseProject();
             var op = new SpotBugsOperation().fromProject(project);
 
-            assertEquals("main.xml", op.output().getName(), "output should be main.xml");
+            assertEquals("spotbugs.xml", op.output().getName(), "output should be spotbugs.xml");
 
             fromProjectDefaultsValidate(op, project);
         }
@@ -1004,7 +1023,9 @@ class SpotBugsOperationTest {
             var project = new BaseProject();
             var op = new SpotBugsOperation().fromProject(project, true);
 
-            assertEquals("all.xml", op.output().getName(), "output should be all.xml");
+            assertEquals("spotbugs.xml", op.output().getName(), "output should be spotbugs.xml");
+            assertEquals("spotbugs.sarif", op.sarif().getName(), "output should be spotbugs.sarif");
+
 
             fromProjectDefaultsValidate(op, project);
 
@@ -1022,7 +1043,7 @@ class SpotBugsOperationTest {
             var project = new BaseProject();
             var op = new SpotBugsOperation().fromProject(project, false);
 
-            assertEquals("main.xml", op.output().getName(), "output should be main.xml");
+            assertEquals("spotbugs.xml", op.output().getName(), "output should be spotbugs.xml");
 
             fromProjectDefaultsValidate(op, project);
         }
@@ -1474,9 +1495,9 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             assertEquals(
-                    Path.of("build", "reports", "spotbugs", "main.xml").toAbsolutePath().toFile(),
+                    Path.of("build", "reports", "spotbugs", "spotbugs.xml").toAbsolutePath().toFile(),
                     op.output(),
-                    "output should be build/reports/spotbugs/main.xml");
+                    "output should be build/reports/spotbugs/spotbugs.xml");
         }
 
         @Test
@@ -1616,7 +1637,8 @@ class SpotBugsOperationTest {
             var foo = new File("foo");
             var op = newBaseOperation();
 
-            assertNull(op.sarif(), "sarif should be null");
+            assertEquals(new File("build/reports/spotbugs/spotbugs.sarif").getAbsolutePath(),
+                    op.sarif().getAbsolutePath(), "sarif should be build/reports/spotbugs/spotbugs.sarif");
 
             op = op.sarif(foo.getName());
 
@@ -1633,7 +1655,8 @@ class SpotBugsOperationTest {
             var foo = new File("foo");
             var op = newBaseOperation();
 
-            assertNull(op.sarif(), "sarif should be null");
+            assertEquals(new File("build/reports/spotbugs/spotbugs.sarif").getAbsolutePath(),
+                    op.sarif().getAbsolutePath(), "sarif should be build/reports/spotbugs/spotbugs.sarif");
 
             op = op.sarif(foo);
 
@@ -1650,7 +1673,8 @@ class SpotBugsOperationTest {
             var foo = Path.of("foo");
             var op = newBaseOperation();
 
-            assertNull(op.sarif(), "sarif should be null");
+            assertEquals(new File("build/reports/spotbugs/spotbugs.sarif").getAbsolutePath(),
+                    op.sarif().getAbsolutePath(), "sarif should be build/reports/spotbugs/spotbugs.sarif");
 
             op = op.sarif(foo);
 

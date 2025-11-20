@@ -340,7 +340,7 @@ class SpotBugsOperationTest {
 
         @Test
         void executeWithRank() throws Exception {
-            LOGGER.setLevel(Level.WARNING);
+            LOGGER.setLevel(Level.INFO);
             newBaseOperation().maxRank(6).execute();
             TEST_LOG_HANDLER.printLogMessages();
             assertTrue(TEST_LOG_HANDLER.containsMessage("[spotbugs] No potential bugs found"));

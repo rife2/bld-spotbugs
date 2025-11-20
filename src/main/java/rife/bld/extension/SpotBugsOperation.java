@@ -622,7 +622,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
     private void printBugs(Collection<SpotBug> bugs) {
         if (bugs.isEmpty()) {
-            log(PRINT_BUGS_METHOD_NAME, Level.WARNING, "No potential bugs found");
+            log(PRINT_BUGS_METHOD_NAME, Level.INFO, "No potential bugs found");
         } else {
             log(PRINT_BUGS_METHOD_NAME, Level.WARNING,
                     String.format(

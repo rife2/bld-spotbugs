@@ -65,19 +65,19 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     private static final String SPOTBUGS_HOST = "spotbugs.readthedocs.io";
     private static final String SPOTBUGS_SARIF = "spotbugs.sarif";
     private static final String SPOTBUGS_XML = "spotbugs.xml";
-    private final Collection<String> adjustPriority_ = new ArrayList<>();
-    private final Collection<File> analyze_ = new ArrayList<>();
-    private final Collection<String> auxClasspath_ = new ArrayList<>();
-    private final Collection<String> bugCategories_ = new ArrayList<>();
-    private final Collection<String> bugReporters_ = new ArrayList<>();
-    private final Collection<String> choosePlugins_ = new ArrayList<>();
-    private final Collection<String> chooseVisitors_ = new ArrayList<>();
-    private final Collection<String> jvmArgs_ = new ArrayList<>();
-    private final Collection<String> omitVisitors_ = new ArrayList<>();
-    private final Collection<String> onlyAnalyze_ = new ArrayList<>();
-    private final Collection<String> pluginList_ = new ArrayList<>();
-    private final Collection<String> sourcePath_ = new ArrayList<>();
-    private final Collection<String> visitors_ = new ArrayList<>();
+    private final List<String> adjustPriority_ = new ArrayList<>();
+    private final List<File> analyze_ = new ArrayList<>();
+    private final List<String> auxClasspath_ = new ArrayList<>();
+    private final List<String> bugCategories_ = new ArrayList<>();
+    private final List<String> bugReporters_ = new ArrayList<>();
+    private final List<String> choosePlugins_ = new ArrayList<>();
+    private final List<String> chooseVisitors_ = new ArrayList<>();
+    private final List<String> jvmArgs_ = new ArrayList<>();
+    private final List<String> omitVisitors_ = new ArrayList<>();
+    private final List<String> onlyAnalyze_ = new ArrayList<>();
+    private final List<String> pluginList_ = new ArrayList<>();
+    private final List<String> sourcePath_ = new ArrayList<>();
+    private final List<String> visitors_ = new ArrayList<>();
     private boolean adjustExperimental_;
     private boolean applySuppression_;
     private boolean debug_;
@@ -808,7 +808,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @return a collection containing the adjusted priorities as strings
      */
-    public Collection<String> adjustPriorities() {
+    public List<String> adjustPriorities() {
         return adjustPriority_;
     }
 
@@ -914,7 +914,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @return a collection containing the files to analyze
      */
-    public Collection<File> analyze() {
+    public List<File> analyze() {
         return analyze_;
     }
 
@@ -973,7 +973,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @return a collection containing the auxiliary classpath entries
      */
-    public Collection<String> auxClasspath() {
+    public List<String> auxClasspath() {
         return auxClasspath_;
     }
 
@@ -1006,7 +1006,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @return a collection containing the bug categories
      */
-    public Collection<String> bugCategories() {
+    public List<String> bugCategories() {
         return bugCategories_;
     }
 
@@ -1043,7 +1043,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @return a collection containing the bug reporters
      */
-    public Collection<String> bugReporters() {
+    public List<String> bugReporters() {
         return bugReporters_;
     }
 
@@ -1080,7 +1080,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @return a collection containing the chosen plugin strings
      */
-    public Collection<String> choosePlugins() {
+    public List<String> choosePlugins() {
         return choosePlugins_;
     }
 
@@ -1117,7 +1117,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @return a collection containing the chosen visitor strings
      */
-    public Collection<String> chooseVisitors() {
+    public List<String> chooseVisitors() {
         return chooseVisitors_;
     }
 
@@ -1781,7 +1781,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @return a collection containing JVM arguments
      */
-    public Collection<String> jvmArgs() {
+    public List<String> jvmArgs() {
         return jvmArgs_;
     }
 
@@ -1956,7 +1956,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @return a collection containing the visitors to omit
      */
-    public Collection<String> omitVisitors() {
+    public List<String> omitVisitors() {
         return omitVisitors_;
     }
 
@@ -2013,7 +2013,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @return a collection of analyze-only patterns
      */
-    public Collection<String> onlyAnalyze() {
+    public List<String> onlyAnalyze() {
         return onlyAnalyze_;
     }
 
@@ -2100,7 +2100,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @return a collection containing the plugin jar files
      */
-    public Collection<String> pluginList() {
+    public List<String> pluginList() {
         return pluginList_;
     }
 
@@ -2350,7 +2350,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @return a collection containing the source paths
      */
-    public Collection<String> sourcePath() {
+    public List<String> sourcePath() {
         return sourcePath_;
     }
 
@@ -2479,7 +2479,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @return a collection containing the visitors
      */
-    public Collection<String> visitors() {
+    public List<String> visitors() {
         return visitors_;
     }
 

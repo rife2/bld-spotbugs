@@ -58,10 +58,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public static final String INVALID_SPOTBUGS_LOCATION = "Please specify a valid SpotBugs (JAR or home) location.";
 
-    private static final String EXECUTE_METHOD_NAME = "execute";
     private static final Logger LOGGER = Logger.getLogger(SpotBugsOperation.class.getName());
     private static final String LOG_PREFIX = "[spotbugs] ";
-    private static final String PRINT_BUGS_METHOD_NAME = "printBugs";
     private static final String SPOTBUGS_HOST = "spotbugs.readthedocs.io";
     private static final String SPOTBUGS_SARIF = "spotbugs.sarif";
     private static final String SPOTBUGS_XML = "spotbugs.xml";
@@ -129,10 +127,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         super.execute();
 
         var spotBugs = parseSpotBugsXml(output_.toPath());
-
-        log(EXECUTE_METHOD_NAME, Level.FINEST, spotBugs.toString());
-
-
         printBugs(spotBugs);
 
         if (!ignoreFailures_ && !spotBugs.isEmpty()) {
@@ -149,6 +143,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     @SuppressWarnings("PMD.AvoidThrowingRawExceptionTypes")
     @SuppressFBWarnings({"CC_CYCLOMATIC_COMPLEXITY", "PSC_PRESIZE_COLLECTIONS"})
     protected List<String> executeConstructProcessCommandList() {
+        var loggableInfo = LOGGER.isLoggable(Level.INFO) && !silent();
+        var loggableFine = LOGGER.isLoggable(Level.FINE) && !silent();
+
         List<String> cmd = new ArrayList<>();
 
         var jar = findSpotBugsJar();
@@ -416,8 +413,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 cmd.add("-auxclasspathFromFile");
                 cmd.add(auxFile.getAbsolutePath());
 
-                log(EXECUTE_METHOD_NAME, Level.INFO, "auxclasspath" +
-                        auxClasspath_.stream().map(this::projectRelativePath).toList());
+                if (loggableInfo) {
+                    LOGGER.info(logFormat("auxclasspath" +
+                            auxClasspath_.stream().map(this::projectRelativePath).toList()));
+                }
             }
 
             // sourcepath
@@ -425,8 +424,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 cmd.add("-sourcepath");
                 cmd.add(String.join(File.pathSeparator, sourcePath_));
 
-                log(EXECUTE_METHOD_NAME, Level.INFO, "sourcepath" +
-                        sourcePath_.stream().map(this::projectRelativePath).toList());
+                if (loggableInfo) {
+                    LOGGER.info(logFormat("sourcepath" +
+                            sourcePath_.stream().map(this::projectRelativePath).toList()));
+                }
             }
 
             // analyzeFromFile
@@ -440,12 +441,16 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 cmd.add("-analyzeFromFile");
                 cmd.add(analyzeFile.getAbsolutePath());
 
-                log(EXECUTE_METHOD_NAME, Level.INFO,
-                        "analyze" + analyzeList.stream().map(this::projectRelativePath).toList());
+                if (loggableInfo) {
+                    LOGGER.info(logFormat("analyze" +
+                            analyzeList.stream().map(this::projectRelativePath).toList()));
+                }
             }
         }
 
-        log(EXECUTE_METHOD_NAME, Level.FINE, String.join(" ", cmd));
+        if (loggableFine) {
+            LOGGER.fine(logFormat(String.join(" ", cmd)));
+        }
 
         return cmd;
     }
@@ -614,51 +619,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         }
     }
 
-    private void log(String method, Level level, String message) {
-        if (!silent() && LOGGER.isLoggable(level)) {
-            LOGGER.logp(level, getClass().getName(), method, LOG_PREFIX + message);
+    private String logFormat(String message, Object... args) {
+        if (args.length == 0) {
+            return LOG_PREFIX + message;
         }
-    }
-
-    private void printBugs(Collection<SpotBug> bugs) {
-        if (bugs.isEmpty()) {
-            log(PRINT_BUGS_METHOD_NAME, Level.INFO, "No potential bugs found");
-        } else {
-            log(PRINT_BUGS_METHOD_NAME, Level.WARNING,
-                    String.format(
-                            "Found %d potential bug%s",
-                            bugs.size(),
-                            bugs.size() == 1 ? "" : "s")
-            );
-
-            var bugsMaps = new HashMap<String, String>();
-            try {
-                bugsMaps.putAll(parseSpotBugsSarif(sarif_));
-                log("printBugs", Level.FINEST, bugsMaps.toString());
-            } catch (IOException e) {
-                log("printBugs", Level.WARNING,
-                        String.format("Unabled to parse SARIF report: %s", e.getMessage()));
-            }
-
-            for (var result : bugs) {
-                var message = String.format("%s%n" +
-                                "    %s (%s)%n" +
-                                "    %s%sClass: %s, Priority: %s, Rank: %s, Category: %s%n" +
-                                "        --> %s",
-                        sourcePathToUri(result.sourcePath(), result.startLine),
-                        result.type,
-                        bugsMaps.getOrDefault(result.type, "n/a"),
-                        result.method.isBlank() ? "" : "Method: " + result.method + ", ",
-                        result.field.isBlank() ? "" : "Field: " + result.field + ", ",
-                        result.className,
-                        result.priority,
-                        result.rank,
-                        result.category,
-                        detailedMessage_ ? result.message : result.shortMessage);
-
-                log(PRINT_BUGS_METHOD_NAME, Level.WARNING, message);
-            }
-        }
+        return String.format(LOG_PREFIX + message, args);
     }
 
     /**
@@ -2501,6 +2466,62 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public boolean workHard() {
         return workHard_;
+    }
+
+    private void printBugs(Collection<SpotBug> bugs) {
+        if (silent()) {
+            return;
+        }
+
+        var loggableWarning = LOGGER.isLoggable(Level.WARNING);
+        var loggableFinest = LOGGER.isLoggable(Level.FINEST);
+
+        if (bugs.isEmpty()) {
+            if (loggableWarning) {
+                LOGGER.info(logFormat("No potential bugs found"));
+            }
+        } else {
+            if (loggableFinest) {
+                LOGGER.finest(logFormat(bugs.toString()));
+            }
+            if (loggableWarning) {
+                LOGGER.warning(
+                        logFormat("Found %d potential bug%s", bugs.size(), bugs.size() == 1 ? "" : "s")
+                );
+            }
+
+            var bugsMaps = new HashMap<String, String>();
+            try {
+                bugsMaps.putAll(parseSpotBugsSarif(sarif_));
+                if (loggableFinest) {
+                    LOGGER.finest(logFormat(bugsMaps.toString()));
+                }
+            } catch (IOException e) {
+                if (loggableWarning) {
+                    LOGGER.warning(logFormat(("Unable to parse SARIF report: %s"), e.getMessage()));
+                }
+            }
+
+            if (loggableWarning) {
+                for (var result : bugs) {
+                    LOGGER.warning(logFormat(
+                            "%s%n" +
+                                    "    %s (%s)%n" +
+                                    "    %s%sClass: %s, Priority: %s, Rank: %s, Category: %s%n" +
+                                    "        --> %s",
+                            sourcePathToUri(result.sourcePath(), result.startLine),
+                            result.type,
+                            bugsMaps.getOrDefault(result.type, "n/a"),
+                            result.method.isBlank() ? "" : "Method: " + result.method + ", ",
+                            result.field.isBlank() ? "" : "Field: " + result.field + ", ",
+                            result.className,
+                            result.priority,
+                            result.rank,
+                            result.category,
+                            detailedMessage_ ? result.message : result.shortMessage));
+                }
+            }
+        }
     }
 
     private record SpotBug(

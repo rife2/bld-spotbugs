@@ -138,6 +138,20 @@ class SpotBugsOperationTest {
     }
 
     @Nested
+    @DisplayName("Bug")
+    @SuppressWarnings("all")
+    class Bug {
+        boolean hasSpace(String m) {
+            try {
+                String ms[] = m.split(" ");
+                return ms.length != 1;
+            } catch (NullPointerException e) {
+                return false;
+            }
+        }
+    }
+
+    @Nested
     @DisplayName("Bugs")
     @SuppressWarnings("all")
     class Bugs {
@@ -264,7 +278,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
-        void executeWithExclude() {
+        void executeWithExclude() throws ExitStatusException, IOException, InterruptedException {
             var op = newBaseOperation();
 
             assertThrows(ExitStatusException.class, op::execute);
@@ -273,7 +287,8 @@ class SpotBugsOperationTest {
             TEST_LOG_HANDLER.clear();
 
             op.exclude("src/test/resources/excludeFilter.xml");
-            assertDoesNotThrow(op::execute);
+            op.execute();
+
             TEST_LOG_HANDLER.printLogMessages();
             assertTrue(TEST_LOG_HANDLER.containsExactMessage("[spotbugs] No potential bugs found"));
         }
@@ -297,6 +312,18 @@ class SpotBugsOperationTest {
         void executeWithIgnoreFailure() {
             assertDoesNotThrow(() -> newBaseOperation().ignoreFailure(true).execute());
             assertTrue(TEST_LOG_HANDLER.containsMessage("[spotbugs] Found"));
+        }
+
+        @Test
+        void executeWithIncludeFilter() throws Exception {
+            new SpotBugsOperation()
+                    .fromProject(new BaseProject(), true)
+                    .ignoreFailure(true)
+                    .home("example/spotbugs-" + SPOTBUGS_VERSION)
+                    .include("src/test/resources/includeFilter.xml")
+                    .execute();
+            TEST_LOG_HANDLER.printLogMessages();
+            assertTrue(TEST_LOG_HANDLER.containsExactMessage("[spotbugs] Found 1 potential bug in 1 class"));
         }
 
         @Test

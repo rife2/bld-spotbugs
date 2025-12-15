@@ -152,8 +152,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         if (jar.isEmpty()) {
             throw new IllegalArgumentException(INVALID_SPOTBUGS_LOCATION);
         } else {
-            if (!output_.getParentFile().exists() && !output_.getParentFile().mkdirs()) {
-                throw new RuntimeException("Could not create output directory: " + output_.getParentFile());
+            var parentFile = output_.getParentFile();
+            if (parentFile != null && !parentFile.exists() && !parentFile.mkdirs()) {
+                throw new RuntimeException("Could not create output directory: " + parentFile);
             }
 
             File auxFile;
@@ -502,42 +503,99 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         return this;
     }
 
-    private String findSpotBugsJar() {
-        if (spotBugsJar_ != null && spotBugsJar_.exists()) {
-            return spotBugsJar_.getAbsolutePath();
-        }
-
-        if (home_ != null) {
-            var jar = home_.resolve("lib").resolve("spotbugs.jar");
-            if (Files.exists(jar)) {
-                return jar.toAbsolutePath().toString();
+    private static String evaluateXPathWithFallbacks(XPath xpath, Node node, String... expressions)
+            throws XPathExpressionException {
+        for (var expr : expressions) {
+            var result = xpath.evaluate(expr, node);
+            if (result != null && !result.isEmpty()) {
+                return result;
             }
         }
-
         return "";
     }
 
-    private File createTempFile(String prefix) throws IOException {
-        var tempFile = Files.createTempFile("bld-spotbugs-" + prefix + '-', ".tmp").toFile();
-        tempFile.deleteOnExit();
-        return tempFile;
+    private static String normalizeSpotBugsUri(String helpUri) {
+        try {
+            var uri = new URI(helpUri);
+            if (uri.getHost() != null && SPOTBUGS_HOST.equalsIgnoreCase(uri.getHost())) {
+                var frag = uri.getFragment();
+                if (frag != null) {
+                    return helpUri.replace(frag, frag.toLowerCase().replace('_', '-'));
+                }
+            }
+        } catch (URISyntaxException ignored) {
+            // return original
+        }
+        return helpUri;
     }
 
-    private static void writeLinesToFile(Collection<String> lines, File file) throws IOException {
-        Files.write(file.toPath(), lines);
+    /**
+     * Parses the given string into an integer.
+     * <p>
+     * If the string cannot be parsed, returns a default value of {@code -1}.
+     *
+     * @param s the string to be parsed into an integer
+     * @return the parsed integer value, or {@code -1} if parsing fails
+     */
+    public static int parseIntOrDefault(String s) {
+        return parseIntOrDefault(s, -1);
     }
 
-    private String projectRelativePath(String path) {
-        if (path == null || workDirectory_ == null) {
-            return path;
+    /**
+     * Parses the given string into an integer.
+     * <p>
+     * If the string is null, empty, or cannot be parsed as an integer, it returns the specified default value.
+     *
+     * @param s            the string to parse as an integer
+     * @param defaultValue the value to return if parsing fails
+     * @return the parsed integer value, or the default value if parsing fails
+     */
+    public static int parseIntOrDefault(String s, int defaultValue) {
+        if (s == null || s.isEmpty()) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private static Map<String, String> parseSpotBugsSarif(File sarifFile) throws IOException {
+        Map<String, String> bugMap = new ConcurrentHashMap<>();
+
+        if (sarifFile != null && sarifFile.exists()) {
+            var mapper = new ObjectMapper();
+            var root = mapper.readTree(sarifFile);
+
+            var runs = root.get("runs");
+            if (runs != null && runs.isArray()) {
+                for (var run : runs) {
+                    var tool = run.get("tool");
+                    if (tool != null) {
+                        var driver = tool.get("driver");
+                        if (driver != null) {
+                            var rules = driver.get("rules");
+                            if (rules != null && rules.isArray()) {
+                                for (var rule : rules) {
+                                    var id = rule.has("id") ? rule.get("id").asText() : null;
+                                    var helpUri = rule.has("helpUri") ? rule.get("helpUri").asText() : null;
+
+                                    if (helpUri != null) {
+                                        helpUri = normalizeSpotBugsUri(helpUri);
+                                    }
+                                    if (id != null) {
+                                        bugMap.put(id, helpUri);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        var prefix = workDirectory_.getAbsolutePath() + File.separator;
-        if (path.startsWith(workDirectory_.getAbsolutePath())) {
-            return path.substring(prefix.length());
-        }
-
-        return path;
+        return bugMap;
     }
 
     private static List<SpotBug> parseSpotBugsXml(Path xmlPath) throws IOException {
@@ -619,131 +677,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         }
     }
 
-    private String logFormat(String message, Object... args) {
-        if (args.length == 0) {
-            return LOG_PREFIX + message;
-        }
-        return String.format(LOG_PREFIX + message, args);
-    }
-
-    /**
-     * Parses the given string into an integer.
-     * <p>
-     * If the string is null, empty, or cannot be parsed as an integer, it returns the specified default value.
-     *
-     * @param s            the string to parse as an integer
-     * @param defaultValue the value to return if parsing fails
-     * @return the parsed integer value, or the default value if parsing fails
-     */
-    public static int parseIntOrDefault(String s, int defaultValue) {
-        if (s == null || s.isEmpty()) {
-            return defaultValue;
-        }
-        try {
-            return Integer.parseInt(s);
-        } catch (NumberFormatException e) {
-            return defaultValue;
-        }
-    }
-
-    private static String evaluateXPathWithFallbacks(XPath xpath, Node node, String... expressions)
-            throws XPathExpressionException {
-        for (var expr : expressions) {
-            var result = xpath.evaluate(expr, node);
-            if (result != null && !result.isEmpty()) {
-                return result;
-            }
-        }
-        return "";
-    }
-
-    /**
-     * Parses the given string into an integer.
-     * <p>
-     * If the string cannot be parsed, returns a default value of {@code -1}.
-     *
-     * @param s the string to be parsed into an integer
-     * @return the parsed integer value, or {@code -1} if parsing fails
-     */
-    public static int parseIntOrDefault(String s) {
-        return parseIntOrDefault(s, -1);
-    }
-
-    private static Map<String, String> parseSpotBugsSarif(File sarifFile) throws IOException {
-        Map<String, String> bugMap = new ConcurrentHashMap<>();
-
-        if (sarifFile != null && sarifFile.exists()) {
-            var mapper = new ObjectMapper();
-            var root = mapper.readTree(sarifFile);
-
-            var runs = root.get("runs");
-            if (runs != null && runs.isArray()) {
-                for (var run : runs) {
-                    var tool = run.get("tool");
-                    if (tool != null) {
-                        var driver = tool.get("driver");
-                        if (driver != null) {
-                            var rules = driver.get("rules");
-                            if (rules != null && rules.isArray()) {
-                                for (var rule : rules) {
-                                    var id = rule.has("id") ? rule.get("id").asText() : null;
-                                    var helpUri = rule.has("helpUri") ? rule.get("helpUri").asText() : null;
-
-                                    if (helpUri != null) {
-                                        helpUri = normalizeSpotBugsUri(helpUri);
-                                    }
-                                    if (id != null) {
-                                        bugMap.put(id, helpUri);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return bugMap;
-    }
-
-    private String sourcePathToUri(String path, int startLine) {
-        return findExistingSourceFile(path)
-                .map(resolvedPath -> resolvedPath.toUri() + formatLineNumber(startLine))
-                .orElse(path);
-    }
-
-    private static String normalizeSpotBugsUri(String helpUri) {
-        try {
-            var uri = new URI(helpUri);
-            if (uri.getHost() != null && SPOTBUGS_HOST.equalsIgnoreCase(uri.getHost())) {
-                var frag = uri.getFragment();
-                if (frag != null) {
-                    return helpUri.replace(frag, frag.toLowerCase().replace('_', '-'));
-                }
-            }
-        } catch (URISyntaxException ignored) {
-            // return original
-        }
-        return helpUri;
-    }
-
-    private Optional<Path> findExistingSourceFile(String relativePath) {
-        return sourcePath_.stream()
-                .map(sourcePath -> Path.of(sourcePath, relativePath))
-                .filter(path -> path.toFile().exists())
-                .findFirst();
-    }
-
-    private String formatLineNumber(int startLine) {
-        if (startLine > 0) {
-            if (includeLineNumber_) {
-                return ":" + startLine;
-            } else {
-                return " [Line " + startLine + ']';
-            }
-        } else {
-            return "";
-        }
+    private static void writeLinesToFile(Collection<String> lines, File file) throws IOException {
+        Files.write(file.toPath(), lines);
     }
 
     /**
@@ -861,17 +796,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 .map(this::toFile)
                 .forEach(analyze_::add);
         return this;
-    }
-
-    @SuppressFBWarnings("ITC_INHERITANCE_TYPE_CHECKING")
-    private File toFile(Object item) {
-        if (item instanceof File) {
-            return (File) item;
-        } else if (item instanceof Path) {
-            return ((Path) item).toFile();
-        } else {
-            return new File(item.toString());
-        }
     }
 
     /**
@@ -2337,16 +2261,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         return this;
     }
 
-    private String toAbsolutePath(Object item) {
-        if (item instanceof File) {
-            return ((File) item).getAbsolutePath();
-        } else if (item instanceof Path) {
-            return ((Path) item).toAbsolutePath().toString();
-        } else {
-            return item.toString();
-        }
-    }
-
     /**
      * Returns the SpotBugs jar file.
      *
@@ -2468,6 +2382,53 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         return workHard_;
     }
 
+    private File createTempFile(String prefix) throws IOException {
+        var tempFile = Files.createTempFile("bld-spotbugs-" + prefix + '-', ".tmp").toFile();
+        tempFile.deleteOnExit();
+        return tempFile;
+    }
+
+    private Optional<Path> findExistingSourceFile(String relativePath) {
+        return sourcePath_.stream()
+                .map(sourcePath -> Path.of(sourcePath, relativePath))
+                .filter(path -> path.toFile().exists())
+                .findFirst();
+    }
+
+    private String findSpotBugsJar() {
+        if (spotBugsJar_ != null && spotBugsJar_.exists()) {
+            return spotBugsJar_.getAbsolutePath();
+        }
+
+        if (home_ != null) {
+            var jar = home_.resolve("lib").resolve("spotbugs.jar");
+            if (Files.exists(jar)) {
+                return jar.toAbsolutePath().toString();
+            }
+        }
+
+        return "";
+    }
+
+    private String formatLineNumber(int startLine) {
+        if (startLine > 0) {
+            if (includeLineNumber_) {
+                return ":" + startLine;
+            } else {
+                return " [Line " + startLine + ']';
+            }
+        } else {
+            return "";
+        }
+    }
+
+    private String logFormat(String message, Object... args) {
+        if (args.length == 0) {
+            return LOG_PREFIX + message;
+        }
+        return String.format(LOG_PREFIX + message, args);
+    }
+
     private void printBugs(Collection<SpotBug> bugs) {
         if (silent()) {
             return;
@@ -2484,12 +2445,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             if (loggableFinest) {
                 LOGGER.finest(logFormat(bugs.toString()));
             }
-            if (loggableWarning) {
-                LOGGER.warning(
-                        logFormat("Found %d potential bug%s", bugs.size(), bugs.size() == 1 ? "" : "s")
-                );
-            }
 
+            var classNames = new HashSet<String>();
             var bugsMaps = new HashMap<String, String>();
             try {
                 bugsMaps.putAll(parseSpotBugsSarif(sarif_));
@@ -2504,6 +2461,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
             if (loggableWarning) {
                 for (var result : bugs) {
+                    classNames.add(result.className);
                     LOGGER.warning(logFormat(
                             "%s%n" +
                                     "    %s (%s)%n" +
@@ -2520,7 +2478,55 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                             result.category,
                             detailedMessage_ ? result.message : result.shortMessage));
                 }
+
+                LOGGER.warning(
+                        logFormat("Found %d potential bug%s in %d class%s",
+                                bugs.size(),
+                                bugs.size() == 1 ? "" : "s",
+                                classNames.size(),
+                                classNames.size() == 1 ? "" : "es")
+                );
             }
+        }
+    }
+
+    private String projectRelativePath(String path) {
+        if (path == null || workDirectory_ == null) {
+            return path;
+        }
+
+        var prefix = workDirectory_.getAbsolutePath() + File.separator;
+        if (path.startsWith(workDirectory_.getAbsolutePath())) {
+            return path.substring(prefix.length());
+        }
+
+        return path;
+    }
+
+    private String sourcePathToUri(String path, int startLine) {
+        return findExistingSourceFile(path)
+                .map(resolvedPath -> resolvedPath.toUri() + formatLineNumber(startLine))
+                .orElse(path);
+    }
+
+    private String toAbsolutePath(Object item) {
+        if (item instanceof File) {
+            return ((File) item).getAbsolutePath();
+        } else if (item instanceof Path) {
+            return ((Path) item).toAbsolutePath().toString();
+        } else {
+            return item.toString();
+        }
+    }
+
+    @SuppressFBWarnings("ITC_INHERITANCE_TYPE_CHECKING")
+    private File toFile(Object item) {
+        if (item instanceof File) {
+            return (File) item;
+        } else if (item instanceof Path) {
+            return ((Path) item).toFile();
+        } else {
+            return new File(item.toString());
         }
     }
 

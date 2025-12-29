@@ -15,7 +15,7 @@ bld.extension-pmd=com.uwyn.rife2:bld-spotbugs
 
 For more information, please refer to the [extensions](https://github.com/rife2/bld/wiki/Extensions) documentation.
 
-To install a binary distribution of SpotBugs please referer to its
+To install a binary distribution of SpotBugs please refer to its
 [installation instruction](https://spotbugs.readthedocs.io/en/latest/installing.html).
 
 ## Check Source with SpotBugs

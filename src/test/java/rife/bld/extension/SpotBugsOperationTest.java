@@ -590,7 +590,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             op.auxClasspath(List.of(path1, path2));
-            assertEquals(8, op.auxClasspath().size(), "size is not 8");
+            assertEquals(9, op.auxClasspath().size(), "size is not 9");
             assertTrue(op.auxClasspath().contains(path1), path1 + " not found");
             assertTrue(op.auxClasspath().contains(path2), path2 + " not found");
         }

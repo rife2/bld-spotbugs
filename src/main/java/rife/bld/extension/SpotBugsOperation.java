@@ -155,7 +155,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             throw new IllegalArgumentException(INVALID_SPOTBUGS_LOCATION);
         } else {
             var parentFile = output_.getParentFile();
-            if (FilesUtils.notExists(parentFile) && !parentFile.mkdirs()) {
+            if (!FilesUtils.mkdirs(parentFile)) {
                 throw new RuntimeException("Could not create output directory: " + parentFile);
             }
 

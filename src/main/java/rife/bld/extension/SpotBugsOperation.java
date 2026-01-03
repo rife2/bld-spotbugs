@@ -24,6 +24,8 @@ import org.xml.sax.SAXException;
 import rife.bld.BaseProject;
 import rife.bld.extension.spotbugs.Effort;
 import rife.bld.extension.spotbugs.Priority;
+import rife.bld.extension.tools.FilesUtils;
+import rife.bld.extension.tools.TextUtils;
 import rife.bld.operations.AbstractProcessOperation;
 import rife.bld.operations.exceptions.ExitStatusException;
 import rife.tools.exceptions.FileUtilsErrorException;
@@ -113,184 +115,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     private File workDirectory_;
     private boolean workHard_;
 
-    private static String evaluateXPathWithFallbacks(XPath xpath, Node node, String... expressions)
-            throws XPathExpressionException {
-        for (var expr : expressions) {
-            var result = xpath.evaluate(expr, node);
-            if (result != null && !result.isEmpty()) {
-                return result;
-            }
-        }
-        return "";
-    }
-
-    private static String normalizeSpotBugsUri(String helpUri) {
-        try {
-            var uri = new URI(helpUri);
-            if (uri.getHost() != null && SPOTBUGS_HOST.equalsIgnoreCase(uri.getHost())) {
-                var frag = uri.getFragment();
-                if (frag != null) {
-                    return helpUri.replace(frag, frag.toLowerCase().replace('_', '-'));
-                }
-            }
-        } catch (URISyntaxException ignored) {
-            // return original
-        }
-        return helpUri;
-    }
-
-    /**
-     * Parses the given string into an integer.
-     * <p>
-     * If the string cannot be parsed, returns a default value of {@code -1}.
-     *
-     * @param s the string to be parsed into an integer
-     * @return the parsed integer value, or {@code -1} if parsing fails
-     */
-    public static int parseIntOrDefault(String s) {
-        return parseIntOrDefault(s, -1);
-    }
-
-    /**
-     * Parses the given string into an integer.
-     * <p>
-     * If the string is null, empty, or cannot be parsed as an integer, it returns the specified default value.
-     *
-     * @param s            the string to parse as an integer
-     * @param defaultValue the value to return if parsing fails
-     * @return the parsed integer value, or the default value if parsing fails
-     */
-    public static int parseIntOrDefault(String s, int defaultValue) {
-        if (s == null || s.isEmpty()) {
-            return defaultValue;
-        }
-        try {
-            return Integer.parseInt(s);
-        } catch (NumberFormatException e) {
-            return defaultValue;
-        }
-    }
-
-    private static Map<String, String> parseSpotBugsSarif(File sarifFile) throws IOException {
-        Map<String, String> bugMap = new ConcurrentHashMap<>();
-
-        if (sarifFile != null && sarifFile.exists()) {
-            var mapper = new ObjectMapper();
-            var root = mapper.readTree(sarifFile);
-
-            var runs = root.get("runs");
-            if (runs != null && runs.isArray()) {
-                for (var run : runs) {
-                    var tool = run.get("tool");
-                    if (tool != null) {
-                        var driver = tool.get("driver");
-                        if (driver != null) {
-                            var rules = driver.get("rules");
-                            if (rules != null && rules.isArray()) {
-                                for (var rule : rules) {
-                                    var id = rule.has("id") ? rule.get("id").asText() : null;
-                                    var helpUri = rule.has("helpUri") ? rule.get("helpUri").asText() : null;
-
-                                    if (helpUri != null) {
-                                        helpUri = normalizeSpotBugsUri(helpUri);
-                                    }
-                                    if (id != null) {
-                                        bugMap.put(id, helpUri);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return bugMap;
-    }
-
-    private static List<SpotBug> parseSpotBugsXml(Path xmlPath) throws IOException {
-        List<SpotBug> list = new ArrayList<>();
-        var dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(false);
-
-        try {
-            var db = dbf.newDocumentBuilder();
-            var doc = db.parse(Files.newInputStream(xmlPath));
-            var xpf = XPathFactory.newInstance();
-            var xpath = xpf.newXPath();
-
-            var bugInstances = (NodeList) xpath.evaluate("/BugCollection/BugInstance", doc,
-                    XPathConstants.NODESET);
-
-            for (int i = 0; i < bugInstances.getLength(); i++) {
-                var bug = bugInstances.item(i);
-
-                // Extract bug attributes
-                var type = xpath.evaluate("@type", bug);
-                var category = xpath.evaluate("@category", bug);
-                var priority = xpath.evaluate("@priority", bug);
-                var rank = xpath.evaluate("@rank", bug);
-
-                // Extract messages with fallback
-                var shortMessage = xpath.evaluate("ShortMessage/text()", bug);
-                if (shortMessage == null) {
-                    shortMessage = "";
-                }
-
-                var longMessage = xpath.evaluate("LongMessage/text()", bug);
-                if (longMessage == null || longMessage.isEmpty()) {
-                    longMessage = shortMessage;
-                }
-
-                // Extract class and method information
-                var className = xpath.evaluate("Class/@classname", bug);
-                var method = xpath.evaluate("Method/@name", bug);
-                var field = xpath.evaluate("Field/@name", bug);
-
-
-                var sourcePath = evaluateXPathWithFallbacks(xpath, bug,
-                        "SourceLine/@sourcepath",
-                        "Class/SourceLine/@sourcepath",
-                        "Class/Method/SourceLine/@sourcepath");
-
-                var startStr = evaluateXPathWithFallbacks(xpath, bug,
-                        "SourceLine/@start",
-                        "Class/SourceLine/@start",
-                        "Class/Method/SourceLine/@start");
-
-                var endStr = evaluateXPathWithFallbacks(xpath, bug,
-                        "SourceLine/@end",
-                        "Class/SourceLine/@end",
-                        "Class/Method/SourceLine/@end");
-
-                int startLine = parseIntOrDefault(startStr);
-                int endLine = parseIntOrDefault(endStr);
-
-                list.add(new SpotBug(
-                        type,
-                        category,
-                        shortMessage.trim(),
-                        longMessage.trim(),
-                        priority,
-                        rank,
-                        className,
-                        field,
-                        method,
-                        sourcePath,
-                        startLine,
-                        endLine));
-            }
-
-            return list;
-        } catch (XPathExpressionException | ParserConfigurationException | SAXException e) {
-            throw new IOException("Unable to parse XML report", e);
-        }
-    }
-
-    private static void writeLinesToFile(Collection<String> lines, File file) throws IOException {
-        Files.write(file.toPath(), lines);
-    }
-
     /**
      * Performs the operation.
      *
@@ -331,7 +155,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             throw new IllegalArgumentException(INVALID_SPOTBUGS_LOCATION);
         } else {
             var parentFile = output_.getParentFile();
-            if (parentFile != null && !parentFile.exists() && !parentFile.mkdirs()) {
+            if (FilesUtils.notExists(parentFile) && !parentFile.mkdirs()) {
                 throw new RuntimeException("Could not create output directory: " + parentFile);
             }
 
@@ -679,6 +503,184 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         timestampNow_ = true;
 
         return this;
+    }
+
+    private static String evaluateXPathWithFallbacks(XPath xpath, Node node, String... expressions)
+            throws XPathExpressionException {
+        for (var expr : expressions) {
+            var result = xpath.evaluate(expr, node);
+            if (TextUtils.isNotEmpty(result)) {
+                return result;
+            }
+        }
+        return "";
+    }
+
+    private static String normalizeSpotBugsUri(String helpUri) {
+        try {
+            var uri = new URI(helpUri);
+            if (uri.getHost() != null && SPOTBUGS_HOST.equalsIgnoreCase(uri.getHost())) {
+                var frag = uri.getFragment();
+                if (frag != null) {
+                    return helpUri.replace(frag, frag.toLowerCase().replace('_', '-'));
+                }
+            }
+        } catch (URISyntaxException ignored) {
+            // return original
+        }
+        return helpUri;
+    }
+
+    /**
+     * Parses the given string into an integer.
+     * <p>
+     * If the string cannot be parsed, returns a default value of {@code -1}.
+     *
+     * @param s the string to be parsed into an integer
+     * @return the parsed integer value, or {@code -1} if parsing fails
+     */
+    public static int parseIntOrDefault(String s) {
+        return parseIntOrDefault(s, -1);
+    }
+
+    /**
+     * Parses the given string into an integer.
+     * <p>
+     * If the string is null, empty, or cannot be parsed as an integer, it returns the specified default value.
+     *
+     * @param s            the string to parse as an integer
+     * @param defaultValue the value to return if parsing fails
+     * @return the parsed integer value, or the default value if parsing fails
+     */
+    public static int parseIntOrDefault(String s, int defaultValue) {
+        if (TextUtils.isEmpty(s)) {
+            return defaultValue;
+        }
+        try {
+            return Integer.parseInt(s);
+        } catch (NumberFormatException e) {
+            return defaultValue;
+        }
+    }
+
+    private static Map<String, String> parseSpotBugsSarif(File sarifFile) throws IOException {
+        Map<String, String> bugMap = new ConcurrentHashMap<>();
+
+        if (FilesUtils.exists(sarifFile)) {
+            var mapper = new ObjectMapper();
+            var root = mapper.readTree(sarifFile);
+
+            var runs = root.get("runs");
+            if (runs != null && runs.isArray()) {
+                for (var run : runs) {
+                    var tool = run.get("tool");
+                    if (tool != null) {
+                        var driver = tool.get("driver");
+                        if (driver != null) {
+                            var rules = driver.get("rules");
+                            if (rules != null && rules.isArray()) {
+                                for (var rule : rules) {
+                                    var id = rule.has("id") ? rule.get("id").asText() : null;
+                                    var helpUri = rule.has("helpUri") ? rule.get("helpUri").asText() : null;
+
+                                    if (helpUri != null) {
+                                        helpUri = normalizeSpotBugsUri(helpUri);
+                                    }
+                                    if (id != null) {
+                                        bugMap.put(id, helpUri);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return bugMap;
+    }
+
+    private static List<SpotBug> parseSpotBugsXml(Path xmlPath) throws IOException {
+        List<SpotBug> list = new ArrayList<>();
+        var dbf = DocumentBuilderFactory.newInstance();
+        dbf.setNamespaceAware(false);
+
+        try {
+            var db = dbf.newDocumentBuilder();
+            var doc = db.parse(Files.newInputStream(xmlPath));
+            var xpf = XPathFactory.newInstance();
+            var xpath = xpf.newXPath();
+
+            var bugInstances = (NodeList) xpath.evaluate("/BugCollection/BugInstance", doc,
+                    XPathConstants.NODESET);
+
+            for (int i = 0; i < bugInstances.getLength(); i++) {
+                var bug = bugInstances.item(i);
+
+                // Extract bug attributes
+                var type = xpath.evaluate("@type", bug);
+                var category = xpath.evaluate("@category", bug);
+                var priority = xpath.evaluate("@priority", bug);
+                var rank = xpath.evaluate("@rank", bug);
+
+                // Extract messages with fallback
+                var shortMessage = xpath.evaluate("ShortMessage/text()", bug);
+                if (shortMessage == null) {
+                    shortMessage = "";
+                }
+
+                var longMessage = xpath.evaluate("LongMessage/text()", bug);
+                if (TextUtils.isEmpty(longMessage)) {
+                    longMessage = shortMessage;
+                }
+
+                // Extract class and method information
+                var className = xpath.evaluate("Class/@classname", bug);
+                var method = xpath.evaluate("Method/@name", bug);
+                var field = xpath.evaluate("Field/@name", bug);
+
+
+                var sourcePath = evaluateXPathWithFallbacks(xpath, bug,
+                        "SourceLine/@sourcepath",
+                        "Class/SourceLine/@sourcepath",
+                        "Class/Method/SourceLine/@sourcepath");
+
+                var startStr = evaluateXPathWithFallbacks(xpath, bug,
+                        "SourceLine/@start",
+                        "Class/SourceLine/@start",
+                        "Class/Method/SourceLine/@start");
+
+                var endStr = evaluateXPathWithFallbacks(xpath, bug,
+                        "SourceLine/@end",
+                        "Class/SourceLine/@end",
+                        "Class/Method/SourceLine/@end");
+
+                int startLine = parseIntOrDefault(startStr);
+                int endLine = parseIntOrDefault(endStr);
+
+                list.add(new SpotBug(
+                        type,
+                        category,
+                        shortMessage.trim(),
+                        longMessage.trim(),
+                        priority,
+                        rank,
+                        className,
+                        field,
+                        method,
+                        sourcePath,
+                        startLine,
+                        endLine));
+            }
+
+            return list;
+        } catch (XPathExpressionException | ParserConfigurationException | SAXException e) {
+            throw new IOException("Unable to parse XML report", e);
+        }
+    }
+
+    private static void writeLinesToFile(Collection<String> lines, File file) throws IOException {
+        Files.write(file.toPath(), lines);
     }
 
     /**
@@ -2396,7 +2398,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     private String findSpotBugsJar() {
-        if (spotBugsJar_ != null && spotBugsJar_.exists()) {
+        if (FilesUtils.exists(spotBugsJar_)) {
             return spotBugsJar_.getAbsolutePath();
         }
 

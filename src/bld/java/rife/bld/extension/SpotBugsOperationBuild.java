@@ -34,7 +34,7 @@ public class SpotBugsOperationBuild extends Project {
         pkg = "rife.bld.extension";
         name = "SpotBugs";
         archiveBaseName = "bld-spotbugs";
-        version = version(0, 9, 0);
+        version = version(0, 9, 1, "SNAPSHOT");
 
         javaRelease = 17;
 

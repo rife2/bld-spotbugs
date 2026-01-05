@@ -25,6 +25,7 @@ import rife.bld.BaseProject;
 import rife.bld.extension.spotbugs.Effort;
 import rife.bld.extension.spotbugs.Priority;
 import rife.bld.extension.tools.FilesUtils;
+import rife.bld.extension.tools.ObjectsUtils;
 import rife.bld.extension.tools.TextUtils;
 import rife.bld.operations.AbstractProcessOperation;
 import rife.bld.operations.exceptions.ExitStatusException;
@@ -55,6 +56,7 @@ import java.util.logging.Logger;
  */
 @SuppressFBWarnings("EXS_EXCEPTION_SOFTENING_NO_CHECKED")
 public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperation> {
+
     /**
      * The error message indicating that the provided SpotBugs location is invalid.
      */
@@ -2493,7 +2495,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     private String projectRelativePath(String path) {
-        if (path == null || workDirectory_ == null) {
+        if (ObjectsUtils.isAnyNull(path, workDirectory_)) {
             return path;
         }
 

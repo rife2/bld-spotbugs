@@ -24,7 +24,7 @@ import org.xml.sax.SAXException;
 import rife.bld.BaseProject;
 import rife.bld.extension.spotbugs.Effort;
 import rife.bld.extension.spotbugs.Priority;
-import rife.bld.extension.tools.FilesUtils;
+import rife.bld.extension.tools.IOUtils;
 import rife.bld.extension.tools.ObjectsUtils;
 import rife.bld.extension.tools.TextUtils;
 import rife.bld.operations.AbstractProcessOperation;
@@ -54,6 +54,7 @@ import java.util.logging.Logger;
  * @author <a href="https://erik.thauvin.net/">Erik C. Thauvin</a>
  * @since 1.0
  */
+@SuppressWarnings("PMB.ExcessiveImports")
 @SuppressFBWarnings("EXS_EXCEPTION_SOFTENING_NO_CHECKED")
 public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperation> {
 
@@ -157,7 +158,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             throw new IllegalArgumentException(INVALID_SPOTBUGS_LOCATION);
         } else {
             var parentFile = output_.getParentFile();
-            if (!FilesUtils.mkdirs(parentFile)) {
+            if (!IOUtils.mkdirs(parentFile)) {
                 throw new RuntimeException("Could not create output directory: " + parentFile);
             }
 
@@ -568,7 +569,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     private static Map<String, String> parseSpotBugsSarif(File sarifFile) throws IOException {
         Map<String, String> bugMap = new ConcurrentHashMap<>();
 
-        if (FilesUtils.exists(sarifFile)) {
+        if (IOUtils.exists(sarifFile)) {
             var mapper = new ObjectMapper();
             var root = mapper.readTree(sarifFile);
 
@@ -2400,7 +2401,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     private String findSpotBugsJar() {
-        if (FilesUtils.exists(spotBugsJar_)) {
+        if (IOUtils.exists(spotBugsJar_)) {
             return spotBugsJar_.getAbsolutePath();
         }
 
@@ -2547,5 +2548,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             String sourcePath,
             int startLine,
             int endLine) {
+
     }
 }

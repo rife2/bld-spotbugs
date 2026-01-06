@@ -488,7 +488,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     public SpotBugsOperation fromProject(BaseProject project) {
         workDirectory_ = project.workDirectory();
 
-        var reportsDir = Path.of(project.buildDirectory().getAbsolutePath(), "reports", "spotbugs").toFile();
+        var reportsDir = IOUtils.resolveFile(project.buildDirectory(), "reports", "spotbugs");
         output_ = new File(reportsDir, SPOTBUGS_XML);
         sarif_ = new File(reportsDir, SPOTBUGS_SARIF);
 
@@ -1306,8 +1306,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         fromProject(project);
 
         if (includeTest) {
-            var reportsDir =
-                    Path.of(project.buildDirectory().getAbsolutePath(), "reports", "spotbugs").toFile();
+            var reportsDir = IOUtils.resolveFile(project.buildDirectory(), "reports", "spotbugs");
             output_ = new File(reportsDir, SPOTBUGS_XML);
             sarif_ = new File(reportsDir, SPOTBUGS_SARIF);
 

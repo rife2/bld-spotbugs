@@ -18,11 +18,11 @@ package rife.bld.extension;
 
 import rife.bld.BuildCommand;
 import rife.bld.Project;
+import rife.bld.extension.tools.IOUtils;
 import rife.bld.publish.PublishDeveloper;
 import rife.bld.publish.PublishLicense;
 import rife.bld.publish.PublishScm;
 
-import java.io.File;
 import java.util.List;
 
 import static rife.bld.dependencies.Repository.*;
@@ -30,6 +30,7 @@ import static rife.bld.dependencies.Scope.*;
 import static rife.bld.operations.JavadocOptions.DocLinkOption.NO_MISSING;
 
 public class SpotBugsOperationBuild extends Project {
+
     public SpotBugsOperationBuild() {
         pkg = "rife.bld.extension";
         name = "SpotBugs";
@@ -90,10 +91,6 @@ public class SpotBugsOperationBuild extends Project {
                 .signPassphrase(property("sign.passphrase"));
     }
 
-    public static void main(String[] args) {
-        new SpotBugsOperationBuild().start(args);
-    }
-
     @Override
     public void test() throws Exception {
         if (ExecOperation.isLinux()) {
@@ -103,10 +100,13 @@ public class SpotBugsOperationBuild extends Project {
                     .execute();
         }
 
-        var testResultsDir = "build/test-results/test/";
         var op = testOperation().fromProject(this);
-        op.testToolOptions().reportsDir(new File(testResultsDir));
+        op.testToolOptions().reportsDir(IOUtils.resolveFile(buildDirectory(), "test-results", "test"));
         op.execute();
+    }
+
+    public static void main(String[] args) {
+        new SpotBugsOperationBuild().start(args);
     }
 
     @BuildCommand(summary = "Runs PMD analysis")

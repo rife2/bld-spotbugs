@@ -20,8 +20,8 @@ public class ExampleBuild extends Project {
         scope(provided)
                 .include(dependency("com.github.spotbugs", "spotbugs-annotations", version(4, 9, 8)));
         scope(test)
-                .include(dependency("org.junit.jupiter", "junit-jupiter", version(6, 0, 1)))
-                .include(dependency("org.junit.platform", "junit-platform-console-standalone", version(6, 0, 1)));
+                .include(dependency("org.junit.jupiter", "junit-jupiter", version(6, 0, 2)))
+                .include(dependency("org.junit.platform", "junit-platform-console-standalone", version(6, 0, 2)));
     }
 
     public static void main(String[] args) {

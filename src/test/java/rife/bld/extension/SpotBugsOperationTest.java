@@ -46,6 +46,7 @@ import static rife.bld.extension.SpotBugsOperation.INVALID_SPOTBUGS_LOCATION;
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
 @SuppressFBWarnings("DMI_HARDCODED_ABSOLUTE_FILENAME")
 class SpotBugsOperationTest {
+
     private static final String SPOTBUGS_VERSION = "4.9.8";
 
     static SpotBugsOperation newBaseOperation() {
@@ -141,6 +142,7 @@ class SpotBugsOperationTest {
     @DisplayName("Bug")
     @SuppressWarnings("all")
     class Bug {
+
         boolean hasSpace(String m) {
             try {
                 String ms[] = m.split(" ");
@@ -155,6 +157,7 @@ class SpotBugsOperationTest {
     @DisplayName("Bugs")
     @SuppressWarnings("all")
     class Bugs {
+
         List<String> bugs;
 
         public Bugs(List<String> bugs) {
@@ -178,6 +181,7 @@ class SpotBugsOperationTest {
     @Nested
     @DisplayName("Execute Tests")
     class ExecuteTests {
+
         @SuppressWarnings("LoggerInitializedWithForeignClass")
         private static final Logger LOGGER = Logger.getLogger(SpotBugsOperation.class.getName());
         private static final TestLogHandler TEST_LOG_HANDLER = new TestLogHandler();
@@ -425,6 +429,7 @@ class SpotBugsOperationTest {
     @Nested
     @DisplayName("Getters/Setters Test")
     class GettersSettersTests {
+
         @Test
         void adjustExperimental() {
             var op = newBaseOperation();
@@ -1908,6 +1913,7 @@ class SpotBugsOperationTest {
     @Nested
     @DisplayName("parseIntOrDefault Tests")
     class ParseIntOrDefaultTests {
+
         @Test
         void parseIntOrDefaultWithEmptyString() {
             assertEquals(42, SpotBugsOperation.parseIntOrDefault("", 42));

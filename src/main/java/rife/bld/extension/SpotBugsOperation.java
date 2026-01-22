@@ -24,9 +24,9 @@ import org.xml.sax.SAXException;
 import rife.bld.BaseProject;
 import rife.bld.extension.spotbugs.Effort;
 import rife.bld.extension.spotbugs.Priority;
-import rife.bld.extension.tools.IOUtils;
-import rife.bld.extension.tools.ObjectsUtils;
-import rife.bld.extension.tools.TextUtils;
+import rife.bld.extension.tools.ObjectTools;
+import rife.bld.extension.tools.IOTools;
+import rife.bld.extension.tools.TextTools;
 import rife.bld.operations.AbstractProcessOperation;
 import rife.bld.operations.exceptions.ExitStatusException;
 import rife.tools.exceptions.FileUtilsErrorException;
@@ -158,7 +158,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             throw new IllegalArgumentException(INVALID_SPOTBUGS_LOCATION);
         } else {
             var parentFile = output_.getParentFile();
-            if (!IOUtils.mkdirs(parentFile)) {
+            if (!IOTools.mkdirs(parentFile)) {
                 throw new RuntimeException("Could not create output directory: " + parentFile);
             }
 
@@ -180,7 +180,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             cmd.add(javaTool());
 
             // jvmArgs
-            cmd.addAll(jvmArgs_);
+            if (ObjectTools.isNotEmpty(jvmArgs_)) {
+                cmd.addAll(jvmArgs_);
+            }
 
             // maxHeapSize
             if (maxHeap_ > 0) {
@@ -488,7 +490,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     public SpotBugsOperation fromProject(BaseProject project) {
         workDirectory_ = project.workDirectory();
 
-        var reportsDir = IOUtils.resolveFile(project.buildDirectory(), "reports", "spotbugs");
+        var reportsDir = IOTools.resolveFile(project.buildDirectory(), "reports", "spotbugs");
         output_ = new File(reportsDir, SPOTBUGS_XML);
         sarif_ = new File(reportsDir, SPOTBUGS_SARIF);
 
@@ -512,7 +514,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             throws XPathExpressionException {
         for (var expr : expressions) {
             var result = xpath.evaluate(expr, node);
-            if (TextUtils.isNotEmpty(result)) {
+            if (TextTools.isNotEmpty(result)) {
                 return result;
             }
         }
@@ -556,7 +558,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return the parsed integer value, or the default value if parsing fails
      */
     public static int parseIntOrDefault(String s, int defaultValue) {
-        if (TextUtils.isEmpty(s)) {
+        if (TextTools.isEmpty(s)) {
             return defaultValue;
         }
         try {
@@ -569,7 +571,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     private static Map<String, String> parseSpotBugsSarif(File sarifFile) throws IOException {
         Map<String, String> bugMap = new ConcurrentHashMap<>();
 
-        if (IOUtils.exists(sarifFile)) {
+        if (IOTools.exists(sarifFile)) {
             var mapper = new ObjectMapper();
             var root = mapper.readTree(sarifFile);
 
@@ -633,7 +635,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 }
 
                 var longMessage = xpath.evaluate("LongMessage/text()", bug);
-                if (TextUtils.isEmpty(longMessage)) {
+                if (TextTools.isEmpty(longMessage)) {
                     longMessage = shortMessage;
                 }
 
@@ -757,7 +759,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #analyze(Collection)
      */
     public SpotBugsOperation analyze(String... files) {
-        analyze_.addAll(Arrays.stream(files).map(File::new).toList());
+        if (ObjectTools.isNotEmpty(files)) {
+            analyze_.addAll(Arrays.stream(files).map(File::new).toList());
+        }
         return this;
     }
 
@@ -770,7 +774,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #analyze(Collection)
      */
     public SpotBugsOperation analyze(File... files) {
-        analyze_.addAll(List.of(files));
+        if (ObjectTools.isNotEmpty(files)) {
+            analyze_.addAll(List.of(files));
+        }
         return this;
     }
 
@@ -783,7 +789,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #analyze(Collection)
      */
     public SpotBugsOperation analyze(Path... files) {
-        analyze_.addAll(Arrays.stream(files).map(Path::toFile).toList());
+        if (ObjectTools.isNotEmpty(files)) {
+            analyze_.addAll(Arrays.stream(files).map(Path::toFile).toList());
+        }
         return this;
     }
 
@@ -796,10 +804,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #analyze(File...)
      */
     public SpotBugsOperation analyze(Collection<?> files) {
-        files.stream()
-                .filter(Objects::nonNull)
-                .map(this::toFile)
-                .forEach(analyze_::add);
+        if (ObjectTools.isNotEmpty(files)) {
+            files.stream()
+                    .filter(Objects::nonNull)
+                    .map(this::toFile)
+                    .forEach(analyze_::add);
+        }
         return this;
     }
 
@@ -843,7 +853,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #auxClasspath(Collection)
      */
     public SpotBugsOperation auxClasspath(String... paths) {
-        auxClasspath_.addAll(Arrays.asList(paths));
+        if (ObjectTools.isNotEmpty(paths)) {
+            auxClasspath_.addAll(Arrays.asList(paths));
+        }
         return this;
     }
 
@@ -858,7 +870,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #auxClasspath(String...)
      */
     public SpotBugsOperation auxClasspath(Collection<String> paths) {
-        auxClasspath_.addAll(paths);
+        if (ObjectTools.isNotEmpty(paths)) {
+            auxClasspath_.addAll(paths);
+        }
         return this;
     }
 
@@ -879,7 +893,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #bugCategories(Collection)
      */
     public SpotBugsOperation bugCategories(String... categories) {
-        bugCategories_.addAll(Arrays.asList(categories));
+        if (ObjectTools.isNotEmpty(categories)) {
+            bugCategories_.addAll(Arrays.asList(categories));
+        }
         return this;
     }
 
@@ -891,7 +907,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #bugCategories(String...)
      */
     public SpotBugsOperation bugCategories(Collection<String> categories) {
-        bugCategories_.addAll(categories);
+        if (ObjectTools.isNotEmpty(categories)) {
+            bugCategories_.addAll(categories);
+        }
         return this;
     }
 
@@ -914,7 +932,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #bugReporters(Collection)
      */
     public SpotBugsOperation bugReporters(String... reporters) {
-        bugReporters_.addAll(Arrays.asList(reporters));
+        if (ObjectTools.isNotEmpty(reporters)) {
+            bugReporters_.addAll(Arrays.asList(reporters));
+        }
         return this;
     }
 
@@ -928,7 +948,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #bugReporters(String...)
      */
     public SpotBugsOperation bugReporters(Collection<String> reporters) {
-        bugReporters_.addAll(reporters);
+        if (ObjectTools.isNotEmpty(reporters)) {
+            bugReporters_.addAll(reporters);
+        }
         return this;
     }
 
@@ -951,7 +973,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #choosePlugins(Collection)
      */
     public SpotBugsOperation choosePlugins(String... plugins) {
-        choosePlugins_.addAll(Arrays.asList(plugins));
+        if (ObjectTools.isNotEmpty(plugins)) {
+            choosePlugins_.addAll(Arrays.asList(plugins));
+        }
         return this;
     }
 
@@ -965,7 +989,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #choosePlugins(String...)
      */
     public SpotBugsOperation choosePlugins(Collection<String> plugins) {
-        choosePlugins_.addAll(plugins);
+        if (ObjectTools.isNotEmpty(plugins)) {
+            choosePlugins_.addAll(plugins);
+        }
         return this;
     }
 
@@ -988,7 +1014,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #chooseVisitors(Collection)
      */
     public SpotBugsOperation chooseVisitors(String... visitors) {
-        chooseVisitors_.addAll(Arrays.asList(visitors));
+        if (ObjectTools.isNotEmpty(visitors)) {
+            chooseVisitors_.addAll(Arrays.asList(visitors));
+        }
         return this;
     }
 
@@ -1002,7 +1030,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #chooseVisitors(String...)
      */
     public SpotBugsOperation chooseVisitors(Collection<String> visitors) {
-        chooseVisitors_.addAll(visitors);
+        if (ObjectTools.isNotEmpty(visitors)) {
+            chooseVisitors_.addAll(visitors);
+        }
         return this;
     }
 
@@ -1306,7 +1336,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         fromProject(project);
 
         if (includeTest) {
-            var reportsDir = IOUtils.resolveFile(project.buildDirectory(), "reports", "spotbugs");
+            var reportsDir = IOTools.resolveFile(project.buildDirectory(), "reports", "spotbugs");
             output_ = new File(reportsDir, SPOTBUGS_XML);
             sarif_ = new File(reportsDir, SPOTBUGS_SARIF);
 
@@ -1653,7 +1683,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #jvmArgs(Collection)
      */
     public SpotBugsOperation jvmArgs(String... args) {
-        jvmArgs_.addAll(Arrays.asList(args));
+        if (ObjectTools.isNotEmpty(args)) {
+            jvmArgs_.addAll(Arrays.asList(args));
+        }
         return this;
     }
 
@@ -1665,7 +1697,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #jvmArgs(String...)
      */
     public SpotBugsOperation jvmArgs(Collection<String> args) {
-        jvmArgs_.addAll(args);
+        if (ObjectTools.isNotEmpty(args)) {
+            jvmArgs_.addAll(args);
+        }
         return this;
     }
 
@@ -1828,7 +1862,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #omitVisitors(Collection)
      */
     public SpotBugsOperation omitVisitors(String... visitors) {
-        omitVisitors_.addAll(Arrays.asList(visitors));
+        if (ObjectTools.isNotEmpty(visitors)) {
+            omitVisitors_.addAll(Arrays.asList(visitors));
+        }
         return this;
     }
 
@@ -1840,7 +1876,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #omitVisitors(String...)
      */
     public SpotBugsOperation omitVisitors(Collection<String> visitors) {
-        omitVisitors_.addAll(visitors);
+        if (ObjectTools.isNotEmpty(visitors)) {
+            omitVisitors_.addAll(visitors);
+        }
         return this;
     }
 
@@ -1873,7 +1911,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #onlyAnalyze(Collection)
      */
     public SpotBugsOperation onlyAnalyze(String... patterns) {
-        onlyAnalyze_.addAll(Arrays.asList(patterns));
+        if (ObjectTools.isNotEmpty(patterns)) {
+            onlyAnalyze_.addAll(Arrays.asList(patterns));
+        }
         return this;
     }
 
@@ -1897,7 +1937,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #onlyAnalyze(String...)
      */
     public SpotBugsOperation onlyAnalyze(Collection<String> patterns) {
-        onlyAnalyze_.addAll(patterns);
+        if (ObjectTools.isNotEmpty(patterns)) {
+            onlyAnalyze_.addAll(patterns);
+        }
         return this;
     }
 
@@ -1972,7 +2014,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #pluginList(Collection)
      */
     public SpotBugsOperation pluginList(String... plugins) {
-        pluginList_.addAll(Arrays.asList(plugins));
+        if (ObjectTools.isNotEmpty(plugins)) {
+            pluginList_.addAll(Arrays.asList(plugins));
+        }
         return this;
     }
 
@@ -1984,7 +2028,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #pluginList(String...)
      */
     public SpotBugsOperation pluginList(Collection<String> plugins) {
-        pluginList_.addAll(plugins);
+        if (ObjectTools.isNotEmpty(plugins)) {
+            pluginList_.addAll(plugins);
+        }
         return this;
     }
 
@@ -2205,7 +2251,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sourcePath(Collection)
      */
     public SpotBugsOperation sourcePath(String... path) {
-        sourcePath_.addAll(Arrays.asList(path));
+        if (ObjectTools.isNotEmpty(path)) {
+            sourcePath_.addAll(Arrays.asList(path));
+        }
         return this;
     }
 
@@ -2220,7 +2268,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sourcePath(Collection)
      */
     public SpotBugsOperation sourcePath(Path... path) {
-        sourcePath_.addAll(Arrays.stream(path).map(Path::toString).toList());
+        if (ObjectTools.isNotEmpty(path)) {
+            sourcePath_.addAll(Arrays.stream(path).map(Path::toString).toList());
+        }
         return this;
     }
 
@@ -2234,7 +2284,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sourcePath(Collection)
      */
     public SpotBugsOperation sourcePath(File... path) {
-        sourcePath_.addAll(Arrays.stream(path).map(File::getAbsolutePath).toList());
+        if (ObjectTools.isNotEmpty(path)) {
+            sourcePath_.addAll(Arrays.stream(path).map(File::getAbsolutePath).toList());
+        }
         return this;
     }
 
@@ -2258,10 +2310,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sourcePath(Collection)
      */
     public SpotBugsOperation sourcePath(Collection<?> path) {
-        path.stream()
-                .filter(Objects::nonNull)
-                .map(this::toAbsolutePath)
-                .forEach(sourcePath_::add);
+        if (ObjectTools.isNotEmpty(path)) {
+            path.stream()
+                    .filter(Objects::nonNull)
+                    .map(this::toAbsolutePath)
+                    .forEach(sourcePath_::add);
+        }
         return this;
     }
 
@@ -2353,7 +2407,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #visitors(String...)
      */
     public SpotBugsOperation visitors(Collection<String> visitors) {
-        visitors_.addAll(visitors);
+        if (ObjectTools.isNotEmpty(visitors)) {
+            visitors_.addAll(visitors);
+        }
         return this;
     }
 
@@ -2400,7 +2456,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     private String findSpotBugsJar() {
-        if (IOUtils.exists(spotBugsJar_)) {
+        if (IOTools.exists(spotBugsJar_)) {
             return spotBugsJar_.getAbsolutePath();
         }
 
@@ -2441,7 +2497,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         var loggableWarning = LOGGER.isLoggable(Level.WARNING);
         var loggableFinest = LOGGER.isLoggable(Level.FINEST);
 
-        if (bugs.isEmpty()) {
+        if (ObjectTools.isEmpty(bugs)) {
             if (loggableWarning) {
                 LOGGER.info(logFormat("No potential bugs found"));
             }
@@ -2495,7 +2551,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     private String projectRelativePath(String path) {
-        if (ObjectsUtils.isAnyNull(path, workDirectory_)) {
+        if (ObjectTools.isAnyNull(path, workDirectory_)) {
             return path;
         }
 

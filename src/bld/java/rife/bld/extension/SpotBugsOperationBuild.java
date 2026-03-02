@@ -42,12 +42,12 @@ public class SpotBugsOperationBuild extends Project {
         downloadSources = true;
         autoDownloadPurge = true;
 
-        repositories = List.of(MAVEN_LOCAL, MAVEN_CENTRAL, RIFE2_RELEASES, RIFE2_SNAPSHOTS);
+        repositories = List.of(MAVEN_CENTRAL, CENTRAL_SNAPSHOTS, RIFE2_RELEASES);
 
         var junit = version(6, 0, 2);
         scope(compile)
                 .include(dependency("com.uwyn.rife2", "bld-extensions-tools",
-                        version(0, 9, 0, "SNAPSHOT")))
+                        version(0, 9, 0)))
                 .include(dependency("com.fasterxml.jackson.core", "jackson-databind",
                         version(2, 21, 0)))
                 .include(dependency("com.uwyn.rife2", "bld",

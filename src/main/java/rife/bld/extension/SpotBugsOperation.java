@@ -46,7 +46,6 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -577,7 +576,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     private static Map<String, String> parseSpotBugsSarif(File sarifFile) throws IOException {
-        Map<String, String> bugMap = new ConcurrentHashMap<>();
+        Map<String, String> bugMap = new HashMap<>(); // NOPMD
 
         if (IOTools.exists(sarifFile)) {
             var mapper = new ObjectMapper();

@@ -16,7 +16,7 @@ public class ExampleBuild extends Project {
         version = version(0, 1, 0);
 
         downloadSources = true;
-        repositories = List.of(MAVEN_CENTRAL, RIFE2_RELEASES);
+        repositories = List.of(MAVEN_CENTRAL, RIFE2_RELEASES, RIFE2_SNAPSHOTS);
         
         var junit = version(6, 0, 3);
         scope(provided)

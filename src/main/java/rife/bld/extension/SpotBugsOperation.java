@@ -420,8 +420,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 cmd.add(auxFile.getAbsolutePath());
 
                 if (loggableInfo) {
-                    LOGGER.info(logFormat("auxclasspath" +
-                            auxClasspath_.stream().map(this::projectRelativePath).toList()));
+                    var relativePaths = auxClasspath_.stream().map(this::projectRelativePath).toList();
+                    LOGGER.info(logFormat("auxclasspath" + relativePaths));
                 }
             }
 
@@ -431,8 +431,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 cmd.add(String.join(File.pathSeparator, sourcePath_));
 
                 if (loggableInfo) {
-                    LOGGER.info(logFormat("sourcepath" +
-                            sourcePath_.stream().map(this::projectRelativePath).toList()));
+                    var relativePaths = sourcePath_.stream().map(this::projectRelativePath).toList();
+                    LOGGER.info(logFormat("sourcepath" + relativePaths));
                 }
             }
 
@@ -454,8 +454,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 cmd.add(analyzeFile.getAbsolutePath());
 
                 if (loggableInfo) {
-                    LOGGER.info(logFormat("analyze" +
-                            analyzeList.stream().map(this::projectRelativePath).toList()));
+                    var relativePaths = analyzeList.stream().map(this::projectRelativePath).toList();
+                    LOGGER.info(logFormat("analyze" + relativePaths));
                 }
             }
         }
@@ -2572,64 +2572,48 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         return String.format(LOG_PREFIX + message, args);
     }
 
-    private void printBugs(Collection<SpotBug> bugs) {
-        if (silent()) {
+    private void printBugs(Collection<SpotBug> bugs, Map<String, String> bugMap) {
+        if (silent() || !LOGGER.isLoggable(Level.WARNING)) {
             return;
         }
 
-        var loggableWarning = LOGGER.isLoggable(Level.WARNING);
-        var loggableFinest = LOGGER.isLoggable(Level.FINEST);
-
         if (ObjectTools.isEmpty(bugs)) {
-            if (loggableWarning) {
-                LOGGER.info(logFormat("No potential bugs found"));
-            }
+            LOGGER.info(logFormat("No potential bugs found"));
         } else {
+            var loggableFinest = LOGGER.isLoggable(Level.FINEST);
+
             if (loggableFinest) {
                 LOGGER.finest(logFormat(bugs.toString()));
+                LOGGER.finest(logFormat(bugMap.toString()));
             }
 
             var classNames = new HashSet<String>();
-            var bugsMaps = new HashMap<String, String>();
-            try {
-                bugsMaps.putAll(parseSpotBugsSarif(sarif_));
-                if (loggableFinest) {
-                    LOGGER.finest(logFormat(bugsMaps.toString()));
-                }
-            } catch (IOException e) {
-                if (loggableWarning) {
-                    LOGGER.warning(logFormat(("Unable to parse SARIF report: %s"), e.getMessage()));
-                }
+            for (var result : bugs) {
+                classNames.add(result.className);
+                LOGGER.warning(logFormat(
+                        "%s%n" +
+                                "    %s (%s)%n" +
+                                "    %s%sClass: %s, Priority: %s, Rank: %s, Category: %s%n" +
+                                "        --> %s",
+                        sourcePathToUri(result.sourcePath(), result.startLine),
+                        result.type,
+                        bugMap.getOrDefault(result.type, "n/a"),
+                        result.method.isBlank() ? "" : "Method: " + result.method + ", ",
+                        result.field.isBlank() ? "" : "Field: " + result.field + ", ",
+                        result.className,
+                        result.priority,
+                        result.rank,
+                        result.category,
+                        detailedMessage_ ? result.message : result.shortMessage));
             }
 
-            if (loggableWarning) {
-                for (var result : bugs) {
-                    classNames.add(result.className);
-                    LOGGER.warning(logFormat(
-                            "%s%n" +
-                                    "    %s (%s)%n" +
-                                    "    %s%sClass: %s, Priority: %s, Rank: %s, Category: %s%n" +
-                                    "        --> %s",
-                            sourcePathToUri(result.sourcePath(), result.startLine),
-                            result.type,
-                            bugsMaps.getOrDefault(result.type, "n/a"),
-                            result.method.isBlank() ? "" : "Method: " + result.method + ", ",
-                            result.field.isBlank() ? "" : "Field: " + result.field + ", ",
-                            result.className,
-                            result.priority,
-                            result.rank,
-                            result.category,
-                            detailedMessage_ ? result.message : result.shortMessage));
-                }
-
-                LOGGER.warning(
-                        logFormat("Found %d potential bug%s in %d class%s",
-                                bugs.size(),
-                                bugs.size() == 1 ? "" : "s",
-                                classNames.size(),
-                                classNames.size() == 1 ? "" : "es")
-                );
-            }
+            LOGGER.warning(
+                    logFormat("Found %d potential bug%s in %d class%s",
+                            bugs.size(),
+                            bugs.size() == 1 ? "" : "s",
+                            classNames.size(),
+                            classNames.size() == 1 ? "" : "es")
+            );
         }
     }
 

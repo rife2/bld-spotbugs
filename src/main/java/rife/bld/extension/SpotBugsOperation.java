@@ -1633,8 +1633,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param ignoreFailures {@code true} to enable, {@code false} to disable.
      * @return this operation
+     * @see #ignoreFailures()
      */
-    public SpotBugsOperation ignoreFailure(boolean ignoreFailures) {
+    public SpotBugsOperation ignoreFailures(boolean ignoreFailures) {
         ignoreFailures_ = ignoreFailures;
         return this;
     }
@@ -1643,6 +1644,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Return the ignore failures flag.
      *
      * @return {@code true} if enabled, {@code false} otherwise
+     * @see #ignoreFailures(boolean)
      */
     public boolean ignoreFailures() {
         return ignoreFailures_;

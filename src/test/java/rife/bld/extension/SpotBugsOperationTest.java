@@ -213,7 +213,7 @@ class SpotBugsOperationTest {
                                     "Examples",
                                     "example")
                     )
-                    .ignoreFailure(true)
+                    .ignoreFailures(true)
                     .spotBugsJar("example/spotbugs-" + SPOTBUGS_VERSION + "/lib/spotbugs.jar");
             op.execute();
 
@@ -229,7 +229,7 @@ class SpotBugsOperationTest {
 
         @Test
         void executeIgnoreFailureAndSilent() throws Exception {
-            newBaseOperation().ignoreFailure(true).silent(true).execute();
+            newBaseOperation().ignoreFailures(true).silent(true).execute();
             assertTrue(TEST_LOG_HANDLER.isEmpty());
         }
 
@@ -261,7 +261,7 @@ class SpotBugsOperationTest {
         @Test
         void executeNoLogging() throws Exception {
             LOGGER.setLevel(Level.OFF);
-            newBaseOperation().ignoreFailure(true).execute();
+            newBaseOperation().ignoreFailures(true).execute();
             assertTrue(TEST_LOG_HANDLER.isEmpty());
         }
 
@@ -291,6 +291,7 @@ class SpotBugsOperationTest {
             TEST_LOG_HANDLER.clear();
 
             op.exclude("src/test/resources/excludeFilter.xml");
+            op.ignoreFailures(true);
             op.execute();
 
             TEST_LOG_HANDLER.printLogMessages();
@@ -313,8 +314,8 @@ class SpotBugsOperationTest {
         }
 
         @Test
-        void executeWithIgnoreFailure() {
-            assertDoesNotThrow(() -> newBaseOperation().ignoreFailure(true).execute());
+        void executeWithIgnoreFailures() {
+            assertDoesNotThrow(() -> newBaseOperation().ignoreFailures(true).execute());
             assertTrue(TEST_LOG_HANDLER.containsMessage("[spotbugs] Found"));
         }
 
@@ -322,7 +323,7 @@ class SpotBugsOperationTest {
         void executeWithIncludeFilter() throws Exception {
             new SpotBugsOperation()
                     .fromProject(new BaseProject(), true)
-                    .ignoreFailure(true)
+                    .ignoreFailures(true)
                     .home("example/spotbugs-" + SPOTBUGS_VERSION)
                     .include("src/test/resources/includeFilter.xml")
                     .execute();
@@ -355,7 +356,7 @@ class SpotBugsOperationTest {
             new SpotBugsOperation()
                     .fromProject(new BaseProject())
                     .spotBugsJar("example/spotbugs-" + SPOTBUGS_VERSION + "/lib/spotbugs.jar")
-                    .ignoreFailure(true)
+                    .ignoreFailures(true)
                     .execute();
             TEST_LOG_HANDLER.printLogMessages();
             assertTrue(TEST_LOG_HANDLER.containsMessage("[spotbugs] Found"));
@@ -1226,7 +1227,7 @@ class SpotBugsOperationTest {
 
             assertFalse(op.ignoreFailures(), "ignoreFailures should be false");
 
-            op = op.ignoreFailure(true);
+            op = op.ignoreFailures(true);
 
             assertTrue(op.ignoreFailures(), "ignoreFailures should be true");
         }

@@ -59,16 +59,19 @@ import java.util.logging.Logger;
 @SuppressFBWarnings("EXS_EXCEPTION_SOFTENING_NO_CHECKED")
 public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperation> {
 
-    /**
-     * The error message indicating that the provided SpotBugs location is invalid.
-     */
-    public static final String INVALID_SPOTBUGS_LOCATION = "Please specify a valid SpotBugs (JAR or home) location.";
-
+    private static final DocumentBuilderFactory DOCUMENT_BUILDER_FACTORY = DocumentBuilderFactory.newInstance();
+    private static final String INVALID_SPOTBUGS_LOCATION = "Please specify a valid SpotBugs (JAR or home) location.";
     private static final Logger LOGGER = Logger.getLogger(SpotBugsOperation.class.getName());
     private static final String LOG_PREFIX = "[spotbugs] ";
     private static final String SPOTBUGS_HOST = "spotbugs.readthedocs.io";
     private static final String SPOTBUGS_SARIF = "spotbugs.sarif";
     private static final String SPOTBUGS_XML = "spotbugs.xml";
+    private static final XPathFactory XPATH_FACTORY = XPathFactory.newInstance();
+
+    static {
+        DOCUMENT_BUILDER_FACTORY.setNamespaceAware(false);
+    }
+
     private final List<String> adjustPriority_ = new ArrayList<>();
     private final List<File> analyze_ = new ArrayList<>();
     private final List<String> auxClasspath_ = new ArrayList<>();
@@ -133,7 +136,17 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         super.execute();
 
         var spotBugs = parseSpotBugsXml(output_.toPath());
-        printBugs(spotBugs);
+
+        Map<String, String> bugMap = Collections.emptyMap();
+        if (!silent() && LOGGER.isLoggable(Level.WARNING)) {
+            try {
+                bugMap = parseSpotBugsSarif(sarif_);
+            } catch (IOException e) {
+                LOGGER.warning(logFormat("Unable to parse SARIF report: %s", e.getMessage()));
+            }
+        }
+
+        printBugs(spotBugs, bugMap);
 
         if (!ignoreFailures_ && !spotBugs.isEmpty()) {
             throw new ExitStatusException(ExitStatusException.EXIT_FAILURE);
@@ -606,79 +619,76 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     private static List<SpotBug> parseSpotBugsXml(Path xmlPath) throws IOException {
-        List<SpotBug> list = new ArrayList<>();
-        var dbf = DocumentBuilderFactory.newInstance();
-        dbf.setNamespaceAware(false);
+        var list = new ArrayList<SpotBug>();
 
         try {
-            var db = dbf.newDocumentBuilder();
-            var doc = db.parse(Files.newInputStream(xmlPath));
-            var xpf = XPathFactory.newInstance();
-            var xpath = xpf.newXPath();
+            var db = DOCUMENT_BUILDER_FACTORY.newDocumentBuilder();
+            try (var is = Files.newInputStream(xmlPath)) {
+                var doc = db.parse(is);
+                var xpath = XPATH_FACTORY.newXPath();
 
-            var bugInstances = (NodeList) xpath.evaluate("/BugCollection/BugInstance", doc,
-                    XPathConstants.NODESET);
+                var bugInstances = (NodeList) xpath.evaluate("/BugCollection/BugInstance", doc,
+                        XPathConstants.NODESET);
 
-            for (int i = 0; i < bugInstances.getLength(); i++) {
-                var bug = bugInstances.item(i);
+                for (int i = 0; i < bugInstances.getLength(); i++) {
+                    var bug = bugInstances.item(i);
 
-                // Extract bug attributes
-                var type = xpath.evaluate("@type", bug);
-                var category = xpath.evaluate("@category", bug);
-                var priority = xpath.evaluate("@priority", bug);
-                var rank = xpath.evaluate("@rank", bug);
+                    // Extract bug attributes
+                    var type = xpath.evaluate("@type", bug);
+                    var category = xpath.evaluate("@category", bug);
+                    var priority = xpath.evaluate("@priority", bug);
+                    var rank = xpath.evaluate("@rank", bug);
 
-                // Extract messages with fallback
-                var shortMessage = xpath.evaluate("ShortMessage/text()", bug);
-                if (shortMessage == null) {
-                    shortMessage = "";
+                    // Extract messages with fallback
+                    var shortMessage = xpath.evaluate("ShortMessage/text()", bug);
+                    if (shortMessage == null) {
+                        shortMessage = "";
+                    }
+
+                    var longMessage = xpath.evaluate("LongMessage/text()", bug);
+                    if (TextTools.isEmpty(longMessage)) {
+                        longMessage = shortMessage;
+                    }
+
+                    // Extract class and method information
+                    var className = xpath.evaluate("Class/@classname", bug);
+                    var method = xpath.evaluate("Method/@name", bug);
+                    var field = xpath.evaluate("Field/@name", bug);
+
+                    var sourcePath = evaluateXPathWithFallbacks(xpath, bug,
+                            "SourceLine/@sourcepath",
+                            "Class/SourceLine/@sourcepath",
+                            "Class/Method/SourceLine/@sourcepath");
+
+                    var startStr = evaluateXPathWithFallbacks(xpath, bug,
+                            "SourceLine/@start",
+                            "Class/SourceLine/@start",
+                            "Class/Method/SourceLine/@start");
+
+                    var endStr = evaluateXPathWithFallbacks(xpath, bug,
+                            "SourceLine/@end",
+                            "Class/SourceLine/@end",
+                            "Class/Method/SourceLine/@end");
+
+                    int startLine = parseIntOrDefault(startStr);
+                    int endLine = parseIntOrDefault(endStr);
+
+                    list.add(new SpotBug(
+                            type,
+                            category,
+                            shortMessage.trim(),
+                            longMessage.trim(),
+                            priority,
+                            rank,
+                            className,
+                            field,
+                            method,
+                            sourcePath,
+                            startLine,
+                            endLine));
                 }
-
-                var longMessage = xpath.evaluate("LongMessage/text()", bug);
-                if (TextTools.isEmpty(longMessage)) {
-                    longMessage = shortMessage;
-                }
-
-                // Extract class and method information
-                var className = xpath.evaluate("Class/@classname", bug);
-                var method = xpath.evaluate("Method/@name", bug);
-                var field = xpath.evaluate("Field/@name", bug);
-
-
-                var sourcePath = evaluateXPathWithFallbacks(xpath, bug,
-                        "SourceLine/@sourcepath",
-                        "Class/SourceLine/@sourcepath",
-                        "Class/Method/SourceLine/@sourcepath");
-
-                var startStr = evaluateXPathWithFallbacks(xpath, bug,
-                        "SourceLine/@start",
-                        "Class/SourceLine/@start",
-                        "Class/Method/SourceLine/@start");
-
-                var endStr = evaluateXPathWithFallbacks(xpath, bug,
-                        "SourceLine/@end",
-                        "Class/SourceLine/@end",
-                        "Class/Method/SourceLine/@end");
-
-                int startLine = parseIntOrDefault(startStr);
-                int endLine = parseIntOrDefault(endStr);
-
-                list.add(new SpotBug(
-                        type,
-                        category,
-                        shortMessage.trim(),
-                        longMessage.trim(),
-                        priority,
-                        rank,
-                        className,
-                        field,
-                        method,
-                        sourcePath,
-                        startLine,
-                        endLine));
+                return list;
             }
-
-            return list;
         } catch (XPathExpressionException | ParserConfigurationException | SAXException e) {
             throw new IOException("Unable to parse XML report", e);
         }

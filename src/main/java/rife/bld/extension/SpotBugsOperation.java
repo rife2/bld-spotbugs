@@ -1416,14 +1416,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         fromProject(project);
 
         if (includeTest) {
-            var reportsDir = IOTools.resolveFile(project.buildDirectory(), "reports", "spotbugs");
-            output_ = new File(reportsDir, SPOTBUGS_XML);
-            sarif_ = new File(reportsDir, SPOTBUGS_SARIF);
-
             analyze_.add(project.buildTestDirectory());
             sourcePath_.add(project.srcTestResourcesDirectory().getAbsolutePath());
             sourcePath_.add(project.srcTestJavaDirectory().getAbsolutePath());
-            auxClasspath_.clear();
             auxClasspath_.addAll(project.compileTestClasspath());
         }
 

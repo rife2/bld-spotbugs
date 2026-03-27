@@ -468,7 +468,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     /**
-     * Configures a compile operation from a {@link BaseProject}.
+     * Configures the operation from a {@link BaseProject}.
      * <p>
      * Sets the following from the project:
      * <ul>
@@ -480,7 +480,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *     <li>{@link #output() output} to {@code reports/spotbugs/spotbugs.xml} in the
      *     {@link BaseProject#buildDirectory() buildDirectory}</li>
      *     <li>{@link #projectName() projectName} to the {@link BaseProject#name() project name}</li>
-     *     <li>{@link #sarif() sarif} to {@code reports/spotbugs/spotbugs.sarif) in the</li>
+     *     <li>{@link #sarif() sarif} to {@code reports/spotbugs/spotbugs.sarif} in the
      *     {@link BaseProject#buildDirectory() buildDirectory}</li>
      *     <li>{@link #sourcePath() sourcePath} to {@link BaseProject#srcMainJavaDirectory() srcMainJavaDirectory}
      *     and {@link BaseProject#srcMainResourcesDirectory() srcMainResourceDirectory}</li>
@@ -547,6 +547,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param s the string to be parsed into an integer
      * @return the parsed integer value, or {@code -1} if parsing fails
+     * @see #parseIntOrDefault(String, int)
      */
     public static int parseIntOrDefault(String s) {
         return parseIntOrDefault(s, -1);
@@ -560,6 +561,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param s            the string to parse as an integer
      * @param defaultValue the value to return if parsing fails
      * @return the parsed integer value, or the default value if parsing fails
+     * @see #parseIntOrDefault(String)
      */
     public static int parseIntOrDefault(String s, int defaultValue) {
         if (TextTools.isEmpty(s)) {
@@ -694,6 +696,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param adjustExperimental set to {@code true} to lower priority, {@code false} otherwise
      * @return this operation
+     * @see #adjustExperimental()
      */
     public SpotBugsOperation adjustExperimental(boolean adjustExperimental) {
         adjustExperimental_ = adjustExperimental;
@@ -704,6 +707,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether experimental bug patterns will have their priority lowered.
      *
      * @return {@code true} if experimental patterns priorities are adjusted, {@code false} otherwise
+     * @see #adjustExperimental(boolean)
      */
     public boolean adjustExperimental() {
         return adjustExperimental_;
@@ -715,6 +719,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Each element is formatted as: {@code name=value}
      *
      * @return a collection containing the adjusted priorities as strings
+     * @see #adjustPriority(String, int)
+     * @see #adjustPriority(String, Priority)
      */
     public List<String> adjustPriorities() {
         return adjustPriority_;
@@ -731,6 +737,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param name     the detector or bug pattern name
      * @param priority the priority level to adjust
      * @see #adjustPriority(String, Priority)
+     * @see #adjustPriorities()
      */
     public SpotBugsOperation adjustPriority(String name, int priority) {
         adjustPriority_.add(name + "=" + priority);
@@ -745,6 +752,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param priority the priority level to adjust
      * @return this operation
      * @see #adjustPriority(String, int)
+     * @see #adjustPriorities()
      */
     public SpotBugsOperation adjustPriority(String name, Priority priority) {
         adjustPriority_.add(name + "=" + priority.name().toLowerCase());
@@ -857,6 +865,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param applySuppression set to {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #applySuppression()
      */
     public SpotBugsOperation applySuppression(boolean applySuppression) {
         applySuppression_ = applySuppression;
@@ -867,6 +876,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether suppression from filter files is applied.
      *
      * @return {@code true} if suppression is applied, {@code false} otherwise
+     * @see #applySuppression(boolean)
      */
     public boolean applySuppression() {
         return applySuppression_;
@@ -1090,6 +1100,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param debug {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #debug()
      */
     public SpotBugsOperation debug(boolean debug) {
         debug_ = debug;
@@ -1100,6 +1111,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Retrieves the debug state.
      *
      * @return {@code true} if debug mode is enabled, {@code false} otherwise.
+     * @see #debug(boolean)
      */
     public boolean debug() {
         return debug_;
@@ -1110,6 +1122,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param detailedMessage {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #detailedMessage()
      */
     public SpotBugsOperation detailedMessage(boolean detailedMessage) {
         this.detailedMessage_ = detailedMessage;
@@ -1120,6 +1133,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether detailed messages are enabled.
      *
      * @return {@code true} if detailed messages will be printed, {@code false} otherwise
+     * @see #detailedMessage(boolean)
      */
     public boolean detailedMessage() {
         return detailedMessage_;
@@ -1130,6 +1144,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param dontCombineWarnings set to {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #dontCombineWarnings()
      */
     public SpotBugsOperation dontCombineWarnings(boolean dontCombineWarnings) {
         dontCombineWarnings_ = dontCombineWarnings;
@@ -1140,6 +1155,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether warnings that differ only by line number are combined.
      *
      * @return {@code true} if warnings are not combined, {@code false} otherwise
+     * @see #dontCombineWarnings(boolean)
      */
     public boolean dontCombineWarnings() {
         return dontCombineWarnings_;
@@ -1164,6 +1180,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param effort the effort level
      * @return this operation
      * @see Effort
+     * @see #effort()
      */
     public SpotBugsOperation effort(Effort effort) {
         effort_ = effort;
@@ -1174,6 +1191,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the configured analysis effort level.
      *
      * @return the {@link Effort} configured for this operation, or {@code null} if none
+     * @see #effort(Effort)
      */
     public Effort effort() {
         return effort_;
@@ -1186,6 +1204,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #emacs(String)
      * @see #emacs(Path)
+     * @see #emacs()
      */
     public SpotBugsOperation emacs(File file) {
         emacs_ = file;
@@ -1199,6 +1218,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #emacs(String)
      * @see #emacs(File)
+     * @see #emacs()
      */
     public SpotBugsOperation emacs(Path file) {
         emacs_ = file.toFile();
@@ -1212,6 +1232,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #emacs(File)
      * @see #emacs(Path)
+     * @see #emacs()
      */
     public SpotBugsOperation emacs(String file) {
         emacs_ = new File(file);
@@ -1222,6 +1243,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the Emacs bug reports file.
      *
      * @return the bug reports file
+     * @see #emacs(File)
+     * @see #emacs(String)
+     * @see #emacs(Path)
      */
     public File emacs() {
         return emacs_;
@@ -1235,6 +1259,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #exclude(String)
      * @see #exclude(Path)
+     * @see #exclude()
      */
     public SpotBugsOperation exclude(File excludeFilter) {
         exclude_ = excludeFilter;
@@ -1249,6 +1274,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #exclude(File)
      * @see #exclude(Path)
+     * @see #exclude()
      */
     public SpotBugsOperation exclude(String excludeFilter) {
         exclude_ = new File(excludeFilter);
@@ -1263,6 +1289,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #exclude(File)
      * @see #exclude(String)
+     * @see #exclude()
      */
     public SpotBugsOperation exclude(Path excludeFilter) {
         exclude_ = excludeFilter.toFile();
@@ -1273,6 +1300,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the configured filter file used to exclude bugs.
      *
      * @return the exclude filter {@link File}, or {@code null} if none configured
+     * @see #exclude(File)
+     * @see #exclude(String)
+     * @see #exclude(Path)
      */
     public File exclude() {
         return exclude_;
@@ -1285,6 +1315,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #excludeBugs(File)
      * @see #excludeBugs(Path)
+     * @see #excludeBugs()
      */
     public SpotBugsOperation excludeBugs(String excludeFile) {
         excludeBugs_ = new File(excludeFile);
@@ -1298,6 +1329,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #excludeBugs(String)
      * @see #excludeBugs(Path)
+     * @see #excludeBugs()
      */
     public SpotBugsOperation excludeBugs(File excludeFile) {
         excludeBugs_ = excludeFile;
@@ -1311,6 +1343,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #excludeBugs(File)
      * @see #excludeBugs(String)
+     * @see #excludeBugs()
      */
     public SpotBugsOperation excludeBugs(Path excludeFile) {
         excludeBugs_ = excludeFile.toFile();
@@ -1321,6 +1354,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the exclude file used to exclude bugs.
      *
      * @return the exclude file
+     * @see #excludeBugs(String)
+     * @see #excludeBugs(File)
+     * @see #excludeBugs(Path)
      */
     public File excludeBugs() {
         return excludeBugs_;
@@ -1331,6 +1367,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param experimental set to {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #experimental()
      */
     public SpotBugsOperation experimental(boolean experimental) {
         experimental_ = experimental;
@@ -1341,6 +1378,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether experimental bug patterns are included in the report.
      *
      * @return {@code true} if experimental patterns are reported, {@code false} otherwise
+     * @see #experimental(boolean)
      */
     public boolean experimental() {
         return experimental_;
@@ -1355,13 +1393,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *     <li>
      *         {@link #auxClasspath() auxClasspath} to {@link BaseProject#compileMainClasspath() compileMainClasspath}
      *     </li>
+     *     <li>{@link #nested() nested} and {@link #timestampNow() timestampNow} to {@code true}</li>
      *     <li>{@link #output() output} to {@code reports/spotbugs/spotbugs.xml} in the
      *     {@link BaseProject#buildDirectory() buildDirectory}</li>
      *     <li>{@link #projectName() projectName} to the {@link BaseProject#name() project name}</li>
-     *     <li>{@link #sarif() sarif} to {@code reports/spotbugs/spotbugs.sarif) in the</li>
-     *     {@link BaseProject#buildDirectory() buildDirectory}</li>     *     <li>{@link #sourcePath() sourcePath} to {@link BaseProject#srcMainJavaDirectory() srcMainJavaDirectory}
+     *     <li>{@link #sarif() sarif} to {@code reports/spotbugs/spotbugs.sarif} in the
+     *     {@link BaseProject#buildDirectory() buildDirectory}</li>
+     *     <li>{@link #sourcePath() sourcePath} to {@link BaseProject#srcMainJavaDirectory() srcMainJavaDirectory}
      *     and {@link BaseProject#srcMainResourcesDirectory() srcMainResourceDirectory}</li>
-     *     <li>{@link #timestampNow() timestampNow} to {@code true}</li>
      * </ul>
      * <p>
      * If {@code includeTest} is enabled, the {@code test} directories are also included.
@@ -1395,6 +1434,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param high set to {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #high()
      */
     public SpotBugsOperation high(boolean high) {
         high_ = high;
@@ -1405,6 +1445,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether only high-priority bugs will be reported.
      *
      * @return {@code true} if only high-priority bugs are reported, {@code false} otherwise
+     * @see #high(boolean)
      */
     public boolean high() {
         return high_;
@@ -1417,6 +1458,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #home(File)
      * @see #home(Path)
+     * @see #home()
      */
     public SpotBugsOperation home(String home) {
         home_ = Path.of(home);
@@ -1430,6 +1472,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #home(String)
      * @see #home(Path)
+     * @see #home()
      */
     public SpotBugsOperation home(File home) {
         home_ = home.toPath();
@@ -1443,6 +1486,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #home(String)
      * @see #home(File)
+     * @see #home()
      */
     public SpotBugsOperation home(Path home) {
         home_ = home;
@@ -1453,6 +1497,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the SpotBugs home directory.
      *
      * @return the SpotBugs home path, or {@code null} if not set
+     * @see #home(String)
+     * @see #home(File)
+     * @see #home(Path)
      */
     public Path home() {
         return home_;
@@ -1468,6 +1515,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(String, String)
      * @see #html(File, String)
      * @see #html(Path, String)
+     * @see #html()
      */
     public SpotBugsOperation html(File file) {
         html_ = file;
@@ -1480,9 +1528,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param filePath the output file
      * @return this operation
      * @see #html(String)
+     * @see #html(File)
      * @see #html(String, String)
      * @see #html(File, String)
      * @see #html(Path, String)
+     * @see #html()
      */
     public SpotBugsOperation html(Path filePath) {
         html_ = filePath.toFile();
@@ -1499,6 +1549,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(String, String)
      * @see #html(File, String)
      * @see #html(Path, String)
+     * @see #html()
      */
     public SpotBugsOperation html(String file) {
         html_ = new File(file);
@@ -1509,6 +1560,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the HTML output file.
      *
      * @return the HTML output file
+     * @see #html(File)
+     * @see #html(String)
+     * @see #html(Path)
+     * @see #html(String, String)
+     * @see #html(File, String)
+     * @see #html(Path, String)
      */
     public File html() {
         return html_;
@@ -1545,6 +1602,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(File)
      * @see #html(File, String)
      * @see #html(Path, String)
+     * @see #html()
      */
     public SpotBugsOperation html(String file, String stylesheet) {
         html_ = new File(file);
@@ -1582,6 +1640,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(File)
      * @see #html(Path)
      * @see #html(File, String)
+     * @see #html(String, String)
+     * @see #html()
      */
     public SpotBugsOperation html(Path filePath, String stylesheet) {
         html_ = filePath.toFile();
@@ -1620,6 +1680,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(File)
      * @see #html(String, String)
      * @see #html(Path, String)
+     * @see #html()
      */
     public SpotBugsOperation html(File file, String stylesheet) {
         html_ = file;
@@ -1651,6 +1712,16 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         return ignoreFailures_;
     }
 
+    /**
+     * Only report bug instances that match the filter specified by
+     * <a href="https://spotbugs.readthedocs.io/en/latest/filter.html">filter file</a>.
+     *
+     * @param includeFilter the filter file
+     * @return this operation
+     * @see #include(File)
+     * @see #include(Path)
+     * @see #include()
+     */
     public SpotBugsOperation include(String includeFilter) {
         include_ = new File(includeFilter);
         return this;
@@ -1662,8 +1733,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param includeFilter the filter file
      * @return this operation
-     * @see #include(File)
+     * @see #include(String)
      * @see #include(Path)
+     * @see #include()
      */
     public SpotBugsOperation include(File includeFilter) {
         include_ = includeFilter;
@@ -1678,6 +1750,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #include(File)
      * @see #include(String)
+     * @see #include()
      */
     public SpotBugsOperation include(Path includeFilter) {
         include_ = includeFilter.toFile();
@@ -1688,6 +1761,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the include filter file.
      *
      * @return the include filter {@link File}, or {@code null} if none configured
+     * @see #include(String)
+     * @see #include(File)
+     * @see #include(Path)
      */
     public File include() {
         return include_;
@@ -1702,6 +1778,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param includeLineNumber {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #includeLineNumber()
      */
     public SpotBugsOperation includeLineNumber(boolean includeLineNumber) {
         includeLineNumber_ = includeLineNumber;
@@ -1712,6 +1789,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether the line number should be included in source file URIs.
      *
      * @return {@code true} if the line number should be included, {@code false} otherwise
+     * @see #includeLineNumber(boolean)
      */
     public boolean includeLineNumber() {
         return includeLineNumber_;
@@ -1761,6 +1839,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param longBugCodes set to {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #longBugCodes()
      */
     public SpotBugsOperation longBugCodes(boolean longBugCodes) {
         longBugCodes_ = longBugCodes;
@@ -1771,6 +1850,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether long bug codes are enabled.
      *
      * @return {@code true} if long bug codes will be reported, {@code false} otherwise
+     * @see #longBugCodes(boolean)
      */
     public boolean longBugCodes() {
         return longBugCodes_;
@@ -1781,12 +1861,19 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param low set to {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #low()
      */
     public SpotBugsOperation low(boolean low) {
         low_ = low;
         return this;
     }
 
+    /**
+     * Returns whether all bugs are reported.
+     *
+     * @return {@code true} if all bugs are reported, {@code false} otherwise
+     * @see #low(boolean)
+     */
     public boolean low() {
         return low_;
     }
@@ -1798,6 +1885,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param size the maximum heap size in megabytes
      * @return this operation
+     * @see #maxHeap()
      */
     public SpotBugsOperation maxHeap(int size) {
         maxHeap_ = size;
@@ -1808,6 +1896,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the configured maximum Java heap size in megabytes.
      *
      * @return the maximum heap size in megabytes
+     * @see #maxHeap(int)
      */
     public int maxHeap() {
         return maxHeap_;
@@ -1818,6 +1907,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param maxRank the maximum rank
      * @return this operation
+     * @see #maxRank()
      */
     public SpotBugsOperation maxRank(int maxRank) {
         maxRank_ = maxRank;
@@ -1828,6 +1918,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the configured maximum bug rank threshold.
      *
      * @return the maximum rank value
+     * @see #maxRank(int)
      */
     public int maxRank() {
         return maxRank_;
@@ -1840,6 +1931,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param medium set to {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #medium()
      */
     public SpotBugsOperation medium(boolean medium) {
         medium_ = medium;
@@ -1850,6 +1942,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether medium-priority bugs are reported.
      *
      * @return {@code true} if medium (and higher) priority bugs are reported, {@code false} otherwise
+     * @see #medium(boolean)
      */
     public boolean medium() {
         return medium_;
@@ -1863,6 +1956,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param nested set to {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #nested()
      */
     public SpotBugsOperation nested(boolean nested) {
         nested_ = nested;
@@ -1873,6 +1967,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether nested jar/zip scanning is enabled.
      *
      * @return {@code true} if nested scanning is enabled, {@code false} otherwise
+     * @see #nested(boolean)
      */
     public boolean nested() {
         return nested_;
@@ -1883,6 +1978,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param noClassOk set to {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #noClassOk()
      */
     public SpotBugsOperation noClassOk(boolean noClassOk) {
         noClassOk_ = noClassOk;
@@ -1893,6 +1989,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether an empty warning file is allowed when no classes are specified.
      *
      * @return {@code true} if an empty warning file is allowed, {@code false} otherwise
+     * @see #noClassOk(boolean)
      */
     public boolean noClassOk() {
         return noClassOk_;
@@ -2009,6 +2106,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #output(File)
      * @see #output(Path)
+     * @see #output()
      */
     public SpotBugsOperation output(String file) {
         output_ = new File(file);
@@ -2024,6 +2122,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #output(String)
      * @see #output(Path)
+     * @see #output()
      */
     public SpotBugsOperation output(File file) {
         output_ = file;
@@ -2039,6 +2138,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #output(String)
      * @see #output(File)
+     * @see #output()
      */
     public SpotBugsOperation output(Path filePath) {
         output_ = filePath.toFile();
@@ -2049,6 +2149,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the configured XML bug report output file.
      *
      * @return the output {@link File}
+     * @see #output(String)
+     * @see #output(File)
+     * @see #output(Path)
      */
     public File output() {
         return output_;
@@ -2098,6 +2201,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param progress set to {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #progress()
      */
     public SpotBugsOperation progress(boolean progress) {
         progress_ = progress;
@@ -2108,6 +2212,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Retrieves the current progress setting.
      *
      * @return {@code true} if progress display is enabled, {@code false} otherwise
+     * @see #progress(boolean)
      */
     public boolean progress() {
         return progress_;
@@ -2118,6 +2223,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param name the project name
      * @return this operation
+     * @see #projectName()
      */
     public SpotBugsOperation projectName(String name) {
         projectName_ = name;
@@ -2128,6 +2234,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the configured descriptive project name.
      *
      * @return the project name, or {@code null} if not configured
+     * @see #projectName(String)
      */
     public String projectName() {
         return projectName_;
@@ -2140,6 +2247,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param relaxed set to {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #relaxed()
      */
     public SpotBugsOperation relaxed(boolean relaxed) {
         relaxed_ = relaxed;
@@ -2150,6 +2258,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether relaxed reporting mode is enabled.
      *
      * @return {@code true} if relaxed mode is enabled, {@code false} otherwise
+     * @see #relaxed(boolean)
      */
     public boolean relaxed() {
         return relaxed_;
@@ -2160,6 +2269,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param release the release name
      * @return this operation
+     * @see #release()
      */
     public SpotBugsOperation release(String release) {
         release_ = release;
@@ -2170,6 +2280,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the configured release name for the analyzed application.
      *
      * @return the release name, or {@code null} if not set
+     * @see #release(String)
      */
     public String release() {
         return release_;
@@ -2182,6 +2293,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #sarif(String)
      * @see #sarif(Path)
+     * @see #sarif()
      */
     public SpotBugsOperation sarif(File file) {
         sarif_ = file;
@@ -2195,6 +2307,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #sarif(File)
      * @see #sarif(Path)
+     * @see #sarif()
      */
     public SpotBugsOperation sarif(String file) {
         sarif_ = new File(file);
@@ -2208,6 +2321,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #sarif(String)
      * @see #sarif(File)
+     * @see #sarif()
      */
     public SpotBugsOperation sarif(Path filePath) {
         sarif_ = filePath.toFile();
@@ -2218,6 +2332,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the SARIF bug reports file.
      *
      * @return the bug reports file
+     * @see #sarif(File)
+     * @see #sarif(String)
+     * @see #sarif(Path)
      */
     public File sarif() {
         return sarif_;
@@ -2227,6 +2344,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether bug instances will be sorted by class name.
      *
      * @return {@code true} if enabled, {@code false} otherwise
+     * @see #sortByClass(boolean)
      */
     public boolean sortByClass() {
         return sortByClass_;
@@ -2237,6 +2355,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param sortByClass set to {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #sortByClass()
      */
     public SpotBugsOperation sortByClass(boolean sortByClass) {
         sortByClass_ = sortByClass;
@@ -2244,12 +2363,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     /**
-     * Specify the source info file (line numbers for fields/classes)
+     * Specify the source info file (line numbers for fields/classes).
      *
      * @param sourceInfo the source info file
      * @return this operation
      * @see #sourceInfo(File)
      * @see #sourceInfo(Path)
+     * @see #sourceInfo()
      */
     public SpotBugsOperation sourceInfo(String sourceInfo) {
         sourceInfo_ = new File(sourceInfo);
@@ -2257,12 +2377,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     /**
-     * Specify the source info file (line numbers for fields/classes)
+     * Specify the source info file (line numbers for fields/classes).
      *
      * @param sourceInfo the source info file
      * @return this operation
      * @see #sourceInfo(String)
      * @see #sourceInfo(Path)
+     * @see #sourceInfo()
      */
     public SpotBugsOperation sourceInfo(File sourceInfo) {
         sourceInfo_ = sourceInfo;
@@ -2270,12 +2391,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     /**
-     * Specify the source info file (line numbers for fields/classes)
+     * Specify the source info file (line numbers for fields/classes).
      *
      * @param sourceInfo the source info file
      * @return this operation
      * @see #sourceInfo(String)
      * @see #sourceInfo(File)
+     * @see #sourceInfo()
      */
     public SpotBugsOperation sourceInfo(Path sourceInfo) {
         sourceInfo_ = sourceInfo.toFile();
@@ -2286,6 +2408,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the source info file containing line numbers for fields/classes.
      *
      * @return the source info file
+     * @see #sourceInfo(String)
+     * @see #sourceInfo(File)
+     * @see #sourceInfo(Path)
      */
     public File sourceInfo() {
         return sourceInfo_;
@@ -2402,6 +2527,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the SpotBugs jar file.
      *
      * @return the SpotBugs jar file
+     * @see #spotBugsJar(String)
+     * @see #spotBugsJar(File)
+     * @see #spotBugsJar(Path)
      */
     public File spotBugsJar() {
         return spotBugsJar_;
@@ -2414,6 +2542,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #spotBugsJar(File)
      * @see #spotBugsJar(Path)
+     * @see #spotBugsJar()
      */
     public SpotBugsOperation spotBugsJar(String jar) {
         this.spotBugsJar_ = new File(jar);
@@ -2427,6 +2556,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #spotBugsJar(File)
      * @see #spotBugsJar(String)
+     * @see #spotBugsJar()
      */
     public SpotBugsOperation spotBugsJar(Path jarPath) {
         this.spotBugsJar_ = jarPath.toFile();
@@ -2439,7 +2569,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param jar the SpotBugs jar file
      * @return this operation
      * @see #spotBugsJar(String)
-     * @see #spotBugsJar(File)
+     * @see #spotBugsJar(Path)
+     * @see #spotBugsJar()
      */
     public SpotBugsOperation spotBugsJar(File jar) {
         this.spotBugsJar_ = jar;
@@ -2451,6 +2582,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param timeStampNow set to {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #timestampNow()
      */
     public SpotBugsOperation timestampNow(boolean timeStampNow) {
         timestampNow_ = timeStampNow;
@@ -2461,6 +2593,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether the timestamp of results will be set to the current time.
      *
      * @return {@code true} if timestampNow is enabled, {@code false} otherwise
+     * @see #timestampNow(boolean)
      */
     public boolean timestampNow() {
         return timestampNow_;
@@ -2510,6 +2643,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param workHard set to {@code true} to enable, {@code false} otherwise
      * @return this operation
+     * @see #workHard()
      */
     public SpotBugsOperation workHard(boolean workHard) {
         workHard_ = workHard;
@@ -2520,6 +2654,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns whether analysis effort should be at least {@link Effort#DEFAULT}.
      *
      * @return {@code true} if enabled, {@code false} otherwise
+     * @see #workHard(boolean)
      */
     public boolean workHard() {
         return workHard_;
@@ -2533,7 +2668,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
     private Optional<Path> findExistingSourceFile(String relativePath) {
         return sourcePath_.stream()
-                .map(sourcePath -> Path.of(sourcePath, relativePath))
+                .map(Path::of)
+                .map(base -> base.resolve(relativePath))
                 .filter(path -> path.toFile().exists())
                 .findFirst();
     }

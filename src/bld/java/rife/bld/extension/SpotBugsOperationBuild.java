@@ -35,14 +35,14 @@ public class SpotBugsOperationBuild extends Project {
         pkg = "rife.bld.extension";
         name = "SpotBugs";
         archiveBaseName = "bld-spotbugs";
-        version = version(0, 9, 1, "SNAPSHOT");
+        version = version(1, 0, 0);
 
         javaRelease = 17;
 
         downloadSources = true;
         autoDownloadPurge = true;
 
-        repositories = List.of(MAVEN_CENTRAL, CENTRAL_SNAPSHOTS, RIFE2_RELEASES, MAVEN_LOCAL);
+        repositories = List.of(MAVEN_CENTRAL, CENTRAL_SNAPSHOTS, RIFE2_RELEASES, RIFE2_SNAPSHOTS);
 
         var junit = version(6, 0, 3);
         scope(compile)

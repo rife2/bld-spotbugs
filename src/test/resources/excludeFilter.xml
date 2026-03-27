@@ -2,6 +2,6 @@
 <FindBugsFilter>
     <Match>
         <Class name="rife.bld.extension.SpotBugsOperation"/>
-        <Bug pattern="EI_EXPOSE_REP"/>
+        <Bug pattern="CC_CYCLOMATIC_COMPLEXITY"/>
     </Match>
 </FindBugsFilter>

@@ -688,7 +688,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         }
     }
 
-    private static void writeLinesToFile(Collection<String> lines, File file) throws IOException {
+    private static void writeLinesToFile(Iterable<String> lines, File file) throws IOException {
         Files.write(file.toPath(), lines);
     }
 
@@ -723,6 +723,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #adjustPriority(String, int)
      * @see #adjustPriority(String, Priority)
      */
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public List<String> adjustPriorities() {
         return adjustPriority_;
     }
@@ -2768,27 +2769,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 .orElse(path);
     }
 
-    private String toAbsolutePath(Object item) {
-        if (item instanceof File) {
-            return ((File) item).getAbsolutePath();
-        } else if (item instanceof Path) {
-            return ((Path) item).toAbsolutePath().toString();
-        } else {
-            return item.toString();
-        }
-    }
-
-    @SuppressFBWarnings("ITC_INHERITANCE_TYPE_CHECKING")
-    private File toFile(Object item) {
-        if (item instanceof File) {
-            return (File) item;
-        } else if (item instanceof Path) {
-            return ((Path) item).toFile();
-        } else {
-            return new File(item.toString());
-        }
-    }
-
     private record SpotBug(
             String type,
             String category,
@@ -2802,6 +2782,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             String sourcePath,
             int startLine,
             int endLine) {
-
+        // no-op
     }
 }

@@ -40,7 +40,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static rife.bld.extension.SpotBugsOperation.INVALID_SPOTBUGS_LOCATION;
 
 @ExtendWith(LoggingExtension.class)
 @SuppressWarnings("PMD.AvoidDuplicateLiterals")
@@ -278,7 +277,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation().detailedMessage(true);
             assertThrows(ExitStatusException.class, op::execute);
             TEST_LOG_HANDLER.printLogMessages();
-            assertTrue(TEST_LOG_HANDLER.containsMessage("--> rife.bld.extension"));
+            assertTrue(TEST_LOG_HANDLER.containsMessage("CC_CYCLOMATIC_COMPLEXITY"));
         }
 
         @Test
@@ -286,7 +285,8 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             assertThrows(ExitStatusException.class, op::execute);
-            assertTrue(TEST_LOG_HANDLER.containsMessage("EI_EXPOSE_REP"), "EI_EXPOSE_REP not found");
+            assertTrue(TEST_LOG_HANDLER.containsMessage("CC_CYCLOMATIC_COMPLEXITY"),
+                    "CC_CYCLOMATIC_COMPLEXITY not found");
 
             TEST_LOG_HANDLER.clear();
 
@@ -303,7 +303,8 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             assertThrows(ExitStatusException.class, op::execute);
-            assertTrue(TEST_LOG_HANDLER.containsMessage("EI_EXPOSE_REP"), "EI_EXPOSE_REP not found");
+            assertTrue(TEST_LOG_HANDLER.containsMessage("CC_CYCLOMATIC_COMPLEXITY"),
+                    "CC_CYCLOMATIC_COMPLEXITY not found");
 
             TEST_LOG_HANDLER.clear();
 
@@ -338,7 +339,8 @@ class SpotBugsOperationTest {
                     .home("lib");
 
             var e = assertThrows(RuntimeException.class, op::execute);
-            assertTrue(e.getMessage().contains(INVALID_SPOTBUGS_LOCATION), "message is " + e.getMessage());
+            assertTrue(e.getMessage().contains("valid SpotBugs (JAR or home) location"),
+                    "message is " + e.getMessage());
         }
 
         @Test
@@ -348,7 +350,8 @@ class SpotBugsOperationTest {
                     .spotBugsJar("spotbugs.jar");
 
             var e = assertThrows(RuntimeException.class, op::execute);
-            assertTrue(e.getMessage().contains(INVALID_SPOTBUGS_LOCATION), "message is " + e.getMessage());
+            assertTrue(e.getMessage().contains("valid SpotBugs (JAR or home) location"),
+                    "message is " + e.getMessage());
         }
 
         @Test
@@ -392,14 +395,12 @@ class SpotBugsOperationTest {
         @Test
         void executeWithoutAnalyze() {
             var op = newBaseOperation();
-            op.analyze().clear();
             assertThrows(ExitStatusException.class, op::execute);
         }
 
         @Test
         void executeWithoutAuxClasspath() {
             var op = newBaseOperation();
-            op.auxClasspath().clear();
             assertThrows(ExitStatusException.class, op::execute);
         }
 
@@ -408,7 +409,8 @@ class SpotBugsOperationTest {
             var op = new SpotBugsOperation().fromProject(new BaseProject());
             var e = assertThrows(Exception.class, op::execute);
             assertInstanceOf(RuntimeException.class, e);
-            assertTrue(e.getMessage().contains(INVALID_SPOTBUGS_LOCATION), "message is " + e.getMessage());
+            assertTrue(e.getMessage().contains("valid SpotBugs (JAR or home) location"),
+                    "message is " + e.getMessage());
         }
 
         @Test
@@ -422,11 +424,11 @@ class SpotBugsOperationTest {
         @Test
         void executeWithoutSourcePath() {
             var op = newBaseOperation();
-            op.sourcePath().clear();
             assertThrows(ExitStatusException.class, op::execute);
         }
     }
 
+    @SuppressWarnings("ReassignedVariable")
     @Nested
     @DisplayName("Getters/Setters Test")
     class GettersSettersTests {
@@ -519,9 +521,7 @@ class SpotBugsOperationTest {
         void analyzeAsPathArray() {
             var foo = Path.of("foo");
             var bar = Path.of("bar");
-            var op = newBaseOperation();
-
-            op = op.analyze(foo, bar);
+            var op = newBaseOperation().analyze(foo, bar);
             assertEquals(3, op.analyze().size(), "size is not 3");
         }
 
@@ -531,7 +531,7 @@ class SpotBugsOperationTest {
             var bar = Path.of("bar");
             var op = newBaseOperation();
 
-            op.analyze(List.of(foo, bar));
+            op.analyzePaths(List.of(foo, bar));
             assertEquals(3, op.analyze().size(), "size is not 3");
             assertTrue(op.analyze().contains(foo.toFile()), "foo not found");
             assertTrue(op.analyze().contains(bar.toFile()), "bar not found");
@@ -553,7 +553,7 @@ class SpotBugsOperationTest {
             var bar = "bar";
             var op = newBaseOperation();
 
-            op.analyze(List.of(foo, bar));
+            op.analyzeStrings(List.of(foo, bar));
             assertEquals(3, op.analyze().size(), "size is not 3");
             assertTrue(op.analyze().contains(new File(foo)), "foo not found");
             assertTrue(op.analyze().contains(new File(bar)), "bar not found");
@@ -579,12 +579,11 @@ class SpotBugsOperationTest {
             var path2 = "/path/two";
             var op = newBaseOperation();
 
-            assertFalse(op.auxClasspath().isEmpty(), "auxClasspath should empty");
+            assertFalse(op.auxClasspath().isEmpty(), "auxClasspath should not be empty");
 
-            op.auxClasspath().clear();
             op.auxClasspath(path1, path2);
 
-            assertEquals(2, op.auxClasspath().size(), "size is not 2");
+            assertEquals(9, op.auxClasspath().size(), "size is not 9");
             assertTrue(op.auxClasspath().contains(path1), path1 + " not found");
             assertTrue(op.auxClasspath().contains(path2), path2 + " not found");
         }
@@ -851,7 +850,7 @@ class SpotBugsOperationTest {
 
             assertNull(op.emacs(), "emacs should be null");
 
-            op.emacs(foo.getName());
+            op = op.emacs(foo.getName());
             assertEquals(foo.getName(), op.emacs().toString(), "emacs should be foo");
 
             var commandList = op.executeConstructProcessCommandList();
@@ -872,7 +871,7 @@ class SpotBugsOperationTest {
 
             assertNull(op.exclude(), "exclude should be null");
 
-            op.exclude(foo);
+            op = op.exclude(foo);
             assertEquals(foo, op.exclude(), "exclude should be foo");
 
             var commandList = op.executeConstructProcessCommandList();
@@ -889,7 +888,7 @@ class SpotBugsOperationTest {
 
             assertNull(op.exclude(), "exclude should be null");
 
-            op.exclude(foo.toPath());
+            op = op.exclude(foo.toPath());
             assertEquals(foo, op.exclude(), "exclude should be foo");
 
             var commandList = op.executeConstructProcessCommandList();
@@ -923,7 +922,7 @@ class SpotBugsOperationTest {
 
             assertNull(op.excludeBugs(), "excludeBugs should be null");
 
-            op.excludeBugs(foo);
+            op = op.excludeBugs(foo);
             assertEquals(foo, op.excludeBugs(), "excludeBugs should be foo");
 
             var commandList = op.executeConstructProcessCommandList();
@@ -940,7 +939,7 @@ class SpotBugsOperationTest {
 
             assertNull(op.excludeBugs(), "excludeBugs should be null");
 
-            op.excludeBugs(foo.toPath());
+            op = op.excludeBugs(foo.toPath());
             assertEquals(foo, op.excludeBugs(), "excludeBugs should be foo");
 
             var commandList = op.executeConstructProcessCommandList();
@@ -957,7 +956,7 @@ class SpotBugsOperationTest {
 
             assertNull(op.excludeBugs(), "excludeBugs should be null");
 
-            op.excludeBugs(foo.getName());
+            op = op.excludeBugs(foo.getName());
             assertEquals(foo.getName(), op.excludeBugs().toString(), "excludeBugs should be foo");
 
             var commandList = op.executeConstructProcessCommandList();
@@ -987,7 +986,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             assertNull(op.sourceInfo(), "sourceInfo should be null");
-            op.sourceInfo(foo.getName());
+            op = op.sourceInfo(foo.getName());
             assertEquals(foo.getName(), op.sourceInfo().toString(), "sourceInfo should be foo");
 
             var commandList = op.executeConstructProcessCommandList();
@@ -1003,7 +1002,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             assertNull(op.sourceInfo(), "sourceInfo should be null");
-            op.sourceInfo(foo);
+            op = op.sourceInfo(foo);
             assertEquals(foo, op.sourceInfo(), "sourceInfo should be foo");
 
             var commandList = op.executeConstructProcessCommandList();
@@ -1019,7 +1018,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             assertNull(op.sourceInfo(), "sourceInfo should be null");
-            op.sourceInfo(foo.toPath());
+            op = op.sourceInfo(foo.toPath());
             assertEquals(foo, op.sourceInfo(), "sourceInfo should be foo");
 
             var commandList = op.executeConstructProcessCommandList();
@@ -1467,7 +1466,7 @@ class SpotBugsOperationTest {
 
             assertTrue(op.omitVisitors().isEmpty(), "omitVisitors is not empty");
 
-            op = op.omitVisitors(List.of(visitor1, visitor2));
+            op.omitVisitors(List.of(visitor1, visitor2));
             assertEquals(2, op.omitVisitors().size(), "size is not 2");
             assertTrue(op.omitVisitors().contains(visitor1), visitor1 + " not found");
             assertTrue(op.omitVisitors().contains(visitor2), visitor2 + " not found");
@@ -1508,7 +1507,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
             assertTrue(op.onlyAnalyze().isEmpty(), "onlyAnalyze is not empty");
 
-            op = op.onlyAnalyze(List.of(p1, p2));
+            op.onlyAnalyze(List.of(p1, p2));
             assertEquals(2, op.onlyAnalyze().size(), "size is not 2");
             assertTrue(op.onlyAnalyze().contains(p1), p1 + " not found");
             assertTrue(op.onlyAnalyze().contains(p2), p2 + " not found");
@@ -1737,7 +1736,7 @@ class SpotBugsOperationTest {
             var path2 = "/src/main/resources";
             var op = newBaseOperation();
 
-            op.sourcePath(path1, path2);
+            op = op.sourcePath(path1, path2);
             assertEquals(4, op.sourcePath().size(), "size is not 4");
             assertTrue(op.sourcePath().contains(path1), path1 + " not found");
             assertTrue(op.sourcePath().contains(path2), path2 + " not found");
@@ -1747,9 +1746,7 @@ class SpotBugsOperationTest {
         void sourcePathAsFileArray() {
             var path1 = new File("/src/main/java");
             var path2 = new File("/src/main/resources");
-            var op = newBaseOperation();
-
-            op = op.sourcePath(path1, path2);
+            var op = newBaseOperation().sourcePath(path1, path2);
             assertEquals(4, op.sourcePath().size(), "size is not 4");
             assertTrue(op.sourcePath().contains(path1.getAbsolutePath()), path1 + " not found");
             assertTrue(op.sourcePath().contains(path2.getAbsolutePath()), path2 + " not found");
@@ -1759,9 +1756,7 @@ class SpotBugsOperationTest {
         void sourcePathAsFileCollection() {
             var path1 = new File("/src/main/java");
             var path2 = new File("/src/main/resources");
-            var op = newBaseOperation();
-
-            op = op.sourcePath(List.of(path1, path2));
+            var op = newBaseOperation().sourcePathFiles(List.of(path1, path2));
             assertEquals(4, op.sourcePath().size(), "size is not 4");
             assertTrue(op.sourcePath().contains(path1.getAbsolutePath()), path1 + " not found");
             assertTrue(op.sourcePath().contains(path2.getAbsolutePath()), path2 + " not found");
@@ -1771,9 +1766,7 @@ class SpotBugsOperationTest {
         void sourcePathAsPathArray() {
             var path1 = Path.of("/src/main/java");
             var path2 = Path.of("/src/main/resources");
-            var op = newBaseOperation();
-
-            op = op.sourcePath(path1, path2);
+            var op = newBaseOperation().sourcePath(path1, path2);
             assertEquals(4, op.sourcePath().size(), "size is not 4");
             assertTrue(op.sourcePath().contains(path1.toString()), path1 + " not found");
             assertTrue(op.sourcePath().contains(path2.toString()), path2 + " not found");
@@ -1783,9 +1776,7 @@ class SpotBugsOperationTest {
         void sourcePathAsPathCollection() {
             var path1 = Path.of("/src/main/java");
             var path2 = Path.of("/src/main/resources");
-            var op = newBaseOperation();
-
-            op = op.sourcePath(List.of(path1, path2));
+            var op = newBaseOperation().sourcePathPaths(List.of(path1, path2));
             assertEquals(4, op.sourcePath().size(), "size is not 4");
             assertTrue(op.sourcePath().contains(path1.toAbsolutePath().toString()), path1 + " not found");
             assertTrue(op.sourcePath().contains(path2.toAbsolutePath().toString()), path2 + " not found");
@@ -1795,9 +1786,7 @@ class SpotBugsOperationTest {
         void sourcePathAsStringCollection() {
             var path1 = "/src/main/java";
             var path2 = "/src/main/resources";
-            var op = newBaseOperation();
-
-            op = op.sourcePath(List.of(path1, path2));
+            var op = newBaseOperation().sourcePath(List.of(path1, path2));
             assertEquals(4, op.sourcePath().size(), "size is not 4");
             assertTrue(op.sourcePath().contains(path1), path1 + " not found");
             assertTrue(op.sourcePath().contains(path2), path2 + " not found");

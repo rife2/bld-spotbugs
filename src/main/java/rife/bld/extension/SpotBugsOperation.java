@@ -24,8 +24,9 @@ import org.xml.sax.SAXException;
 import rife.bld.BaseProject;
 import rife.bld.extension.spotbugs.Effort;
 import rife.bld.extension.spotbugs.Priority;
-import rife.bld.extension.tools.ObjectTools;
+import rife.bld.extension.tools.CollectionTools;
 import rife.bld.extension.tools.IOTools;
+import rife.bld.extension.tools.ObjectTools;
 import rife.bld.extension.tools.TextTools;
 import rife.bld.operations.AbstractProcessOperation;
 import rife.bld.operations.exceptions.ExitStatusException;
@@ -755,12 +756,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param files array of file paths to analyze
      * @return this operation
      * @see #analyze(File...)
-     * @see #analyze(Collection)
+     * @see #analyze(Path...)
+     * @see #analyze(Collection...)
+     * @see #analyzeStrings(Collection...)
      */
     public SpotBugsOperation analyze(String... files) {
-        if (ObjectTools.isNotEmpty(files)) {
-            analyze_.addAll(Arrays.stream(files).map(File::new).toList());
-        }
+        analyze_.addAll(CollectionTools.combineStringsToFiles(files));
         return this;
     }
 
@@ -770,12 +771,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param files array of files to analyze
      * @return this operation
      * @see #analyze(String...)
-     * @see #analyze(Collection)
+     * @see #analyze(Path...)
+     * @see #analyze(Collection...)
      */
     public SpotBugsOperation analyze(File... files) {
-        if (ObjectTools.isNotEmpty(files)) {
-            analyze_.addAll(List.of(files));
-        }
+        analyze_.addAll(CollectionTools.combine(files));
         return this;
     }
 
@@ -785,13 +785,27 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param files array of files to analyze
      * @return this operation
      * @see #analyze(String...)
-     * @see #analyze(Collection)
+     * @see #analyze(File...)
+     * @see #analyze(Collection...)
+     * @see #analyzePaths(Collection...)
      */
     public SpotBugsOperation analyze(Path... files) {
-        if (ObjectTools.isNotEmpty(files)) {
-            analyze_.addAll(Arrays.stream(files).map(Path::toFile).toList());
-        }
+        analyze_.addAll(CollectionTools.combinePathsToFiles(files));
         return this;
+    }
+
+    /**
+     * Returns the collection of files configured to be analyzed.
+     *
+     * @return a collection containing the files to analyze
+     * @see #analyze(String...)
+     * @see #analyze(File...)
+     * @see #analyze(Path...)
+     * @see #analyze(Collection...)
+     */
+    @SuppressFBWarnings("EI_EXPOSE_REP")
+    public List<File> analyze() {
+        return analyze_;
     }
 
     /**
@@ -801,24 +815,40 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return this operation
      * @see #analyze(String...)
      * @see #analyze(File...)
+     * @see #analyze(Path...)
      */
-    public SpotBugsOperation analyze(Collection<?> files) {
-        if (ObjectTools.isNotEmpty(files)) {
-            files.stream()
-                    .filter(Objects::nonNull)
-                    .map(this::toFile)
-                    .forEach(analyze_::add);
-        }
+    @SafeVarargs
+    public final SpotBugsOperation analyze(Collection<File>... files) {
+        analyze_.addAll(CollectionTools.combine(files));
         return this;
     }
 
     /**
-     * Returns the collection of files configured to be analyzed.
+     * Specifies files to analyze for bugs.
      *
-     * @return a collection containing the files to analyze
+     * @param files collection of files to analyze
+     * @return this operation
+     * @see #analyze(Path...)
+     * @see #analyze(Collection...)
      */
-    public List<File> analyze() {
-        return analyze_;
+    @SafeVarargs
+    public final SpotBugsOperation analyzePaths(Collection<Path>... files) {
+        analyze_.addAll(CollectionTools.combinePathsToFiles(files));
+        return this;
+    }
+
+    /**
+     * Specifies files to analyze for bugs.
+     *
+     * @param files collection of files to analyze
+     * @return this operation
+     * @see #analyze(String...)
+     * @see #analyze(Collection...)
+     */
+    @SafeVarargs
+    public final SpotBugsOperation analyzeStrings(Collection<String>... files) {
+        analyze_.addAll(CollectionTools.combineStringsToFiles(files));
+        return this;
     }
 
     /**
@@ -849,12 +879,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param paths the auxiliary paths to set
      * @return this operation
-     * @see #auxClasspath(Collection)
+     * @see #auxClasspath(Collection...)
+     * @see #auxClasspath()
      */
     public SpotBugsOperation auxClasspath(String... paths) {
-        if (ObjectTools.isNotEmpty(paths)) {
-            auxClasspath_.addAll(Arrays.asList(paths));
-        }
+        auxClasspath_.addAll(CollectionTools.combine(paths));
         return this;
     }
 
@@ -867,11 +896,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param paths the auxiliary paths to set
      * @return this operation
      * @see #auxClasspath(String...)
+     * @see #auxClasspath()
      */
-    public SpotBugsOperation auxClasspath(Collection<String> paths) {
-        if (ObjectTools.isNotEmpty(paths)) {
-            auxClasspath_.addAll(paths);
-        }
+    @SafeVarargs
+    public final SpotBugsOperation auxClasspath(Collection<String>... paths) {
+        auxClasspath_.addAll(CollectionTools.combine(paths));
         return this;
     }
 
@@ -879,36 +908,38 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the auxiliary classpath used for analysis.
      *
      * @return a collection containing the auxiliary classpath entries
+     * @see #auxClasspath(String...)
+     * @see #auxClasspath(Collection...)
      */
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public List<String> auxClasspath() {
         return auxClasspath_;
     }
 
     /**
-     * 0nly report bugs in given categories.
+     * Only report bugs in given categories.
      *
      * @param categories the bug categories
      * @return this operation
-     * @see #bugCategories(Collection)
+     * @see #bugCategories(Collection...)
+     * @see #bugCategories()
      */
     public SpotBugsOperation bugCategories(String... categories) {
-        if (ObjectTools.isNotEmpty(categories)) {
-            bugCategories_.addAll(Arrays.asList(categories));
-        }
+        bugCategories_.addAll(CollectionTools.combine(categories));
         return this;
     }
 
     /**
-     * 0nly report bugs in given categories.
+     * Only report bugs in given categories.
      *
      * @param categories the bug categories
      * @return this operation
      * @see #bugCategories(String...)
+     * @see #bugCategories()
      */
-    public SpotBugsOperation bugCategories(Collection<String> categories) {
-        if (ObjectTools.isNotEmpty(categories)) {
-            bugCategories_.addAll(categories);
-        }
+    @SafeVarargs
+    public final SpotBugsOperation bugCategories(Collection<String>... categories) {
+        bugCategories_.addAll(CollectionTools.combine(categories));
         return this;
     }
 
@@ -916,7 +947,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the configured bug categories to report.
      *
      * @return a collection containing the bug categories
+     * @see #bugCategories(String...)
+     * @see #bugCategories(Collection...)
      */
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public List<String> bugCategories() {
         return bugCategories_;
     }
@@ -928,12 +962,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param reporters the reporters to enable/disable
      * @return this operation
-     * @see #bugReporters(Collection)
+     * @see #bugReporters(Collection...)
+     * @see #bugReporters()
      */
     public SpotBugsOperation bugReporters(String... reporters) {
-        if (ObjectTools.isNotEmpty(reporters)) {
-            bugReporters_.addAll(Arrays.asList(reporters));
-        }
+        bugReporters_.addAll(CollectionTools.combine(reporters));
         return this;
     }
 
@@ -945,11 +978,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param reporters the reporters to enable/disable
      * @return this operation
      * @see #bugReporters(String...)
+     * @see #bugReporters()
      */
-    public SpotBugsOperation bugReporters(Collection<String> reporters) {
-        if (ObjectTools.isNotEmpty(reporters)) {
-            bugReporters_.addAll(reporters);
-        }
+    @SafeVarargs
+    public final SpotBugsOperation bugReporters(Collection<String>... reporters) {
+        bugReporters_.addAll(CollectionTools.combine(reporters));
         return this;
     }
 
@@ -957,7 +990,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the collection of bug reporter decorators that are enabled/disabled.
      *
      * @return a collection containing the bug reporters
+     * @see #bugReporters(String...)
+     * @see #bugReporters(Collection...)
      */
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public List<String> bugReporters() {
         return bugReporters_;
     }
@@ -969,12 +1005,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param plugins the plugins to enable/disable
      * @return this operation
-     * @see #choosePlugins(Collection)
+     * @see #choosePlugins(Collection...)
+     * @see #choosePlugins()
      */
     public SpotBugsOperation choosePlugins(String... plugins) {
-        if (ObjectTools.isNotEmpty(plugins)) {
-            choosePlugins_.addAll(Arrays.asList(plugins));
-        }
+        choosePlugins_.addAll(CollectionTools.combine(plugins));
         return this;
     }
 
@@ -986,11 +1021,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param plugins the plugins to enable/disable
      * @return this operation
      * @see #choosePlugins(String...)
+     * @see #choosePlugins()
      */
-    public SpotBugsOperation choosePlugins(Collection<String> plugins) {
-        if (ObjectTools.isNotEmpty(plugins)) {
-            choosePlugins_.addAll(plugins);
-        }
+    @SafeVarargs
+    public final SpotBugsOperation choosePlugins(Collection<String>... plugins) {
+        choosePlugins_.addAll(CollectionTools.combine(plugins));
         return this;
     }
 
@@ -998,7 +1033,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the collection of chosen plugin enable/disable decorators.
      *
      * @return a collection containing the chosen plugin strings
+     * @see #choosePlugins(String...)
+     * @see #choosePlugins(Collection...)
      */
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public List<String> choosePlugins() {
         return choosePlugins_;
     }
@@ -1010,12 +1048,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param visitors the visitors to enable/disable
      * @return this operation
-     * @see #chooseVisitors(Collection)
+     * @see #chooseVisitors(Collection...)
+     * @see #chooseVisitors()
      */
     public SpotBugsOperation chooseVisitors(String... visitors) {
-        if (ObjectTools.isNotEmpty(visitors)) {
-            chooseVisitors_.addAll(Arrays.asList(visitors));
-        }
+        chooseVisitors_.addAll(CollectionTools.combine(visitors));
         return this;
     }
 
@@ -1027,11 +1064,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param visitors the visitors to enable/disable
      * @return this operation
      * @see #chooseVisitors(String...)
+     * @see #chooseVisitors()
      */
-    public SpotBugsOperation chooseVisitors(Collection<String> visitors) {
-        if (ObjectTools.isNotEmpty(visitors)) {
-            chooseVisitors_.addAll(visitors);
-        }
+    @SafeVarargs
+    public final SpotBugsOperation chooseVisitors(Collection<String>... visitors) {
+        chooseVisitors_.addAll(CollectionTools.combine(visitors));
         return this;
     }
 
@@ -1039,7 +1076,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the collection of chosen visitor enable/disable decorators.
      *
      * @return a collection containing the chosen visitor strings
+     * @see #chooseVisitors(String...)
+     * @see #chooseVisitors(Collection...)
      */
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public List<String> chooseVisitors() {
         return chooseVisitors_;
     }
@@ -1679,12 +1719,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param args the args to pass to JVM
      * @return this operation
-     * @see #jvmArgs(Collection)
+     * @see #jvmArgs(Collection...)
+     * @see #jvmArgs()
      */
     public SpotBugsOperation jvmArgs(String... args) {
-        if (ObjectTools.isNotEmpty(args)) {
-            jvmArgs_.addAll(Arrays.asList(args));
-        }
+        jvmArgs_.addAll(CollectionTools.combine(args));
         return this;
     }
 
@@ -1694,11 +1733,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param args the args to pass to JVM
      * @return this operation
      * @see #jvmArgs(String...)
+     * @see #jvmArgs()
      */
-    public SpotBugsOperation jvmArgs(Collection<String> args) {
-        if (ObjectTools.isNotEmpty(args)) {
-            jvmArgs_.addAll(args);
-        }
+    @SafeVarargs
+    public final SpotBugsOperation jvmArgs(Collection<String>... args) {
+        jvmArgs_.addAll(CollectionTools.combine(args));
         return this;
     }
 
@@ -1706,7 +1745,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the collection of JVM arguments configured for the SpotBugs run.
      *
      * @return a collection containing JVM arguments
+     * @see #jvmArgs(String...)
+     * @see #jvmArgs(Collection...)
      */
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public List<String> jvmArgs() {
         return jvmArgs_;
     }
@@ -1858,12 +1900,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param visitors the visitors to omit
      * @return this operation
-     * @see #omitVisitors(Collection)
+     * @see #omitVisitors(Collection...)
+     * @see #omitVisitors()
      */
     public SpotBugsOperation omitVisitors(String... visitors) {
-        if (ObjectTools.isNotEmpty(visitors)) {
-            omitVisitors_.addAll(Arrays.asList(visitors));
-        }
+        omitVisitors_.addAll(CollectionTools.combine(visitors));
         return this;
     }
 
@@ -1873,11 +1914,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param visitors the visitors to omit
      * @return this operation
      * @see #omitVisitors(String...)
+     * @see #omitVisitors()
      */
-    public SpotBugsOperation omitVisitors(Collection<String> visitors) {
-        if (ObjectTools.isNotEmpty(visitors)) {
-            omitVisitors_.addAll(visitors);
-        }
+    @SafeVarargs
+    public final SpotBugsOperation omitVisitors(Collection<String>... visitors) {
+        omitVisitors_.addAll(CollectionTools.combine(visitors));
         return this;
     }
 
@@ -1885,7 +1926,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the collection of visitors configured to be omitted.
      *
      * @return a collection containing the visitors to omit
+     * @see #omitVisitors(String...)
+     * @see #omitVisitors(Collection...)
      */
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public List<String> omitVisitors() {
         return omitVisitors_;
     }
@@ -1895,7 +1939,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * <p>
      * Unlike filtering, this option avoids running analysis on classes and packages that are not explicitly matched:
      * for large projects, this may greatly reduce the amount of time needed to run the analysis.
-     * (However, some detectors may produce inaccurate results if they aren’t run on the entire application.)
+     * (However, some detectors may produce inaccurate results if they aren't run on the entire application.)
      * <p>
      * Classes should be specified using their full classnames (including package).
      * <p>
@@ -1907,12 +1951,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param patterns the patterns to analyze
      * @return this operation
-     * @see #onlyAnalyze(Collection)
+     * @see #onlyAnalyze(Collection...)
+     * @see #onlyAnalyze()
      */
     public SpotBugsOperation onlyAnalyze(String... patterns) {
-        if (ObjectTools.isNotEmpty(patterns)) {
-            onlyAnalyze_.addAll(Arrays.asList(patterns));
-        }
+        onlyAnalyze_.addAll(CollectionTools.combine(patterns));
         return this;
     }
 
@@ -1921,7 +1964,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * <p>
      * Unlike filtering, this option avoids running analysis on classes and packages that are not explicitly matched:
      * for large projects, this may greatly reduce the amount of time needed to run the analysis.
-     * (However, some detectors may produce inaccurate results if they aren’t run on the entire application.)
+     * (However, some detectors may produce inaccurate results if they aren't run on the entire application.)
      * <p>
      * Classes should be specified using their full classnames (including package).
      * <p>
@@ -1934,11 +1977,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param patterns the patterns to analyze
      * @return this operation
      * @see #onlyAnalyze(String...)
+     * @see #onlyAnalyze()
      */
-    public SpotBugsOperation onlyAnalyze(Collection<String> patterns) {
-        if (ObjectTools.isNotEmpty(patterns)) {
-            onlyAnalyze_.addAll(patterns);
-        }
+    @SafeVarargs
+    public final SpotBugsOperation onlyAnalyze(Collection<String>... patterns) {
+        onlyAnalyze_.addAll(CollectionTools.combine(patterns));
         return this;
     }
 
@@ -1946,7 +1989,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the collection of analyze-only patterns configured.
      *
      * @return a collection of analyze-only patterns
+     * @see #onlyAnalyze(String...)
+     * @see #onlyAnalyze(Collection...)
      */
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public List<String> onlyAnalyze() {
         return onlyAnalyze_;
     }
@@ -2010,12 +2056,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param plugins the plugin list
      * @return this operation
-     * @see #pluginList(Collection)
+     * @see #pluginList(Collection...)
+     * @see #pluginList()
      */
     public SpotBugsOperation pluginList(String... plugins) {
-        if (ObjectTools.isNotEmpty(plugins)) {
-            pluginList_.addAll(Arrays.asList(plugins));
-        }
+        pluginList_.addAll(CollectionTools.combine(plugins));
         return this;
     }
 
@@ -2025,11 +2070,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param plugins the plugin list
      * @return this operation
      * @see #pluginList(String...)
+     * @see #pluginList()
      */
-    public SpotBugsOperation pluginList(Collection<String> plugins) {
-        if (ObjectTools.isNotEmpty(plugins)) {
-            pluginList_.addAll(plugins);
-        }
+    @SafeVarargs
+    public final SpotBugsOperation pluginList(Collection<String>... plugins) {
+        pluginList_.addAll(CollectionTools.combine(plugins));
         return this;
     }
 
@@ -2037,7 +2082,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the collection of plugin jar files to load.
      *
      * @return a collection containing the plugin jar files
+     * @see #pluginList(String...)
+     * @see #pluginList(Collection...)
      */
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public List<String> pluginList() {
         return pluginList_;
     }
@@ -2245,31 +2293,28 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param path the source path
      * @return this operation
-     * @see #sourcePath(Path... path)
-     * @see #sourcePath(File... path)
-     * @see #sourcePath(Collection)
+     * @see #sourcePath(Path...)
+     * @see #sourcePath(File...)
+     * @see #sourcePath(Collection...)
+     * @see #sourcePath()
      */
     public SpotBugsOperation sourcePath(String... path) {
-        if (ObjectTools.isNotEmpty(path)) {
-            sourcePath_.addAll(Arrays.asList(path));
-        }
+        sourcePath_.addAll(CollectionTools.combine(path));
         return this;
     }
 
     /**
      * Set the source path for analyzed classes.
-     * * @see #sourcePathPaths(Collection)
      *
      * @param path the source path
      * @return this operation
-     * @see #sourcePath(String... path)
-     * @see #sourcePath(File... path)
-     * @see #sourcePath(Collection)
+     * @see #sourcePath(String...)
+     * @see #sourcePath(File...)
+     * @see #sourcePath(Collection...)
+     * @see #sourcePath()
      */
     public SpotBugsOperation sourcePath(Path... path) {
-        if (ObjectTools.isNotEmpty(path)) {
-            sourcePath_.addAll(Arrays.stream(path).map(Path::toString).toList());
-        }
+        sourcePath_.addAll(CollectionTools.combinePathsToStrings(path));
         return this;
     }
 
@@ -2278,14 +2323,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param path the source path
      * @return this operation
-     * @see #sourcePath(String... path)
-     * @see #sourcePath(Path... path)
-     * @see #sourcePath(Collection)
+     * @see #sourcePath(String...)
+     * @see #sourcePath(Path...)
+     * @see #sourcePath(Collection...)
+     * @see #sourcePath()
      */
     public SpotBugsOperation sourcePath(File... path) {
-        if (ObjectTools.isNotEmpty(path)) {
-            sourcePath_.addAll(Arrays.stream(path).map(File::getAbsolutePath).toList());
-        }
+        sourcePath_.addAll(CollectionTools.combineFilesToStrings(path));
         return this;
     }
 
@@ -2293,7 +2337,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the source path for analyzed classes.
      *
      * @return a collection containing the source paths
+     * @see #sourcePath(String...)
+     * @see #sourcePath(Path...)
+     * @see #sourcePath(File...)
+     * @see #sourcePath(Collection...)
      */
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public List<String> sourcePath() {
         return sourcePath_;
     }
@@ -2303,18 +2352,46 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param path the source path
      * @return this operation
-     * @see #sourcePath(String... path)
-     * @see #sourcePath(Path... path)
-     * @see #sourcePath(File... path)
-     * @see #sourcePath(Collection)
+     * @see #sourcePath(String...)
+     * @see #sourcePath(Path...)
+     * @see #sourcePath(File...)
+     * @see #sourcePath()
      */
-    public SpotBugsOperation sourcePath(Collection<?> path) {
-        if (ObjectTools.isNotEmpty(path)) {
-            path.stream()
-                    .filter(Objects::nonNull)
-                    .map(this::toAbsolutePath)
-                    .forEach(sourcePath_::add);
-        }
+    @SafeVarargs
+    public final SpotBugsOperation sourcePath(Collection<String>... path) {
+        sourcePath_.addAll(CollectionTools.combine(path));
+        return this;
+    }
+
+    /**
+     * Set the source path for analyzed classes.
+     *
+     * @param path the source path
+     * @return this operation
+     * @see #sourcePath(String...)
+     * @see #sourcePath(Path...)
+     * @see #sourcePath(File...)
+     * @see #sourcePath()
+     */
+    @SafeVarargs
+    public final SpotBugsOperation sourcePathFiles(Collection<File>... path) {
+        sourcePath_.addAll(CollectionTools.combineFilesToStrings(path));
+        return this;
+    }
+
+    /**
+     * Set the source path for analyzed classes.
+     *
+     * @param path the source path
+     * @return this operation
+     * @see #sourcePath(String...)
+     * @see #sourcePath(Path...)
+     * @see #sourcePath(File...)
+     * @see #sourcePath()
+     */
+    @SafeVarargs
+    public final SpotBugsOperation sourcePathPaths(Collection<Path>... path) {
+        sourcePath_.addAll(CollectionTools.combinePathsToStrings(path));
         return this;
     }
 
@@ -2391,10 +2468,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param visitors the visitors to run
      * @return this operation
-     * @see #visitors(Collection)
+     * @see #visitors(Collection...)
+     * @see #visitors()
      */
     public SpotBugsOperation visitors(String... visitors) {
-        visitors_.addAll(Arrays.asList(visitors));
+        visitors_.addAll(CollectionTools.combine(visitors));
         return this;
     }
 
@@ -2404,11 +2482,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param visitors the visitors to run
      * @return this operation
      * @see #visitors(String...)
+     * @see #visitors()
      */
-    public SpotBugsOperation visitors(Collection<String> visitors) {
-        if (ObjectTools.isNotEmpty(visitors)) {
-            visitors_.addAll(visitors);
-        }
+    @SafeVarargs
+    public final SpotBugsOperation visitors(Collection<String>... visitors) {
+        visitors_.addAll(CollectionTools.combine(visitors));
         return this;
     }
 
@@ -2416,7 +2494,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Returns the collection of named visitors to run.
      *
      * @return a collection containing the visitors
+     * @see #visitors(String...)
+     * @see #visitors(Collection...)
      */
+    @SuppressFBWarnings("EI_EXPOSE_REP")
     public List<String> visitors() {
         return visitors_;
     }

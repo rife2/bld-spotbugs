@@ -528,10 +528,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     private static String normalizeSpotBugsUri(String helpUri) {
         try {
             var uri = new URI(helpUri);
-            if (uri.getHost() != null && SPOTBUGS_HOST.equalsIgnoreCase(uri.getHost())) {
+            if (uri.getHost() != null
+                    && SPOTBUGS_HOST.toLowerCase(Locale.ROOT).equals(uri.getHost().toLowerCase(Locale.ROOT))
+            ) {
                 var frag = uri.getFragment();
                 if (frag != null) {
-                    return helpUri.replace(frag, frag.toLowerCase().replace('_', '-'));
+                    return helpUri.replace(frag, frag.toLowerCase(Locale.ROOT).replace('_', '-'));
                 }
             }
         } catch (URISyntaxException ignored) {

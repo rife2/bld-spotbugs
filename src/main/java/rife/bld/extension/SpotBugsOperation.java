@@ -40,6 +40,7 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import java.io.File;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
@@ -55,8 +56,7 @@ import java.util.logging.Logger;
  * @author <a href="https://erik.thauvin.net/">Erik C. Thauvin</a>
  * @since 1.0
  */
-@SuppressWarnings("PMB.ExcessiveImports")
-@SuppressFBWarnings("EXS_EXCEPTION_SOFTENING_NO_CHECKED")
+@SuppressWarnings({"PMB.ExcessiveImports", "PMD.CouplingBetweenObjects"})
 public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperation> {
 
     private static final DocumentBuilderFactory DOCUMENT_BUILDER_FACTORY = DocumentBuilderFactory.newInstance();
@@ -159,13 +159,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return a list of strings representing the commands or an empty list if no commands are constructed.
      */
     @Override
-    @SuppressWarnings("PMD.AvoidThrowingRawExceptionTypes")
-    @SuppressFBWarnings({"CC_CYCLOMATIC_COMPLEXITY", "PSC_PRESIZE_COLLECTIONS"})
+    @SuppressFBWarnings("EXS_EXCEPTION_SOFTENING_NO_CHECKED")
     protected List<String> executeConstructProcessCommandList() {
         var loggableInfo = LOGGER.isLoggable(Level.INFO) && !silent();
         var loggableFine = LOGGER.isLoggable(Level.FINE) && !silent();
 
-        List<String> cmd = new ArrayList<>();
+        var cmd = new ArrayList<String>();
 
         var jar = findSpotBugsJar();
         if (jar.isEmpty()) {
@@ -173,21 +172,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         } else {
             var parentFile = output_.getParentFile();
             if (!IOTools.mkdirs(parentFile)) {
-                throw new RuntimeException("Could not create output directory: " + parentFile);
-            }
-
-            File auxFile;
-            try {
-                auxFile = createTempFile("aux");
-            } catch (IOException e) {
-                throw new RuntimeException("Could not create auxiliary classpath file", e);
-            }
-
-            File analyzeFile;
-            try {
-                analyzeFile = createTempFile("analyzeFile");
-            } catch (IOException e) {
-                throw new RuntimeException("Could not create analyzeFile file", e);
+                throw new IllegalStateException("Could not create output directory: " + parentFile);
             }
 
             // Java
@@ -309,12 +294,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 cmd.add(sourceInfo_.getAbsolutePath());
             }
 
-            // projectName
-            if (projectName_ != null) {
-                cmd.add("-projectName");
-                cmd.add(projectName_);
-            }
-
             // nested
             if (nested_) {
                 cmd.add("-nested:true");
@@ -426,10 +405,16 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
             // auxClassPathFromFile
             if (!auxClasspath_.isEmpty()) {
+                File auxFile;
+                try {
+                    auxFile = createTempFile("aux");
+                } catch (IOException e) {
+                    throw new UncheckedIOException("Could not create auxiliary classpath file", e);
+                }
                 try {
                     writeLinesToFile(auxClasspath_, auxFile);
                 } catch (IOException e) {
-                    throw new RuntimeException("Could not write auxiliary classpath file", e);
+                    throw new UncheckedIOException("Could not write auxiliary classpath file", e);
                 }
                 cmd.add("-auxclasspathFromFile");
                 cmd.add(auxFile.getAbsolutePath());
@@ -453,11 +438,17 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
             // analyzeFromFile
             if (!analyze_.isEmpty()) {
+                File analyzeFile;
+                try {
+                    analyzeFile = createTempFile("analyzeFile");
+                } catch (IOException e) {
+                    throw new UncheckedIOException("Could not create analyze file", e);
+                }
                 var analyzeList = analyze_.stream().map(File::getAbsolutePath).toList();
                 try {
                     writeLinesToFile(analyzeList, analyzeFile);
                 } catch (IOException e) {
-                    throw new RuntimeException("Could not write analyze file", e);
+                    throw new UncheckedIOException("Could not write analyze file", e);
                 }
                 cmd.add("-analyzeFromFile");
                 cmd.add(analyzeFile.getAbsolutePath());

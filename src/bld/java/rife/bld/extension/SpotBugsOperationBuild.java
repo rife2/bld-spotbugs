@@ -49,7 +49,7 @@ public class SpotBugsOperationBuild extends Project {
                 .include(dependency("com.uwyn.rife2", "bld-extensions-tools",
                         version(0, 9, 1, "SNAPSHOT")))
                 .include(dependency("com.fasterxml.jackson.core", "jackson-databind",
-                        version(2, 21, 1)))
+                        version(2, 21, 2)))
                 .include(dependency("com.uwyn.rife2", "bld",
                         version(2, 3, 1, "SNAPSHOT")));
         scope(provided)

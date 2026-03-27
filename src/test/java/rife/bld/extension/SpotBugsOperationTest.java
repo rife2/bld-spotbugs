@@ -1369,10 +1369,8 @@ class SpotBugsOperationTest {
             assertEquals(512, op.maxHeap(), "maxHeap should be 512");
 
             var commandList = op.executeConstructProcessCommandList();
-            assertTrue(commandList.contains("-Xmx"),
-                    "-Xmx is not present in command list: " + commandList);
-            assertTrue(commandList.contains("512m"),
-                    "512m is not present in command list: " + commandList);
+            assertTrue(commandList.contains("-Xmx512m"),
+                    "-Xmx512m is not present in command list: " + commandList);
         }
 
         @Test

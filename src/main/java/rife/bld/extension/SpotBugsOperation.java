@@ -186,8 +186,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
             // maxHeapSize
             if (maxHeap_ > 0) {
-                cmd.add("-Xmx");
-                cmd.add(maxHeap_ + "m");
+                cmd.add("-Xmx" + maxHeap_ + "m");
             }
 
             // debug

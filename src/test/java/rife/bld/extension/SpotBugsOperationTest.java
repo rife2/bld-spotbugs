@@ -1770,8 +1770,10 @@ class SpotBugsOperationTest {
             var path2 = Path.of("src", "main", "resources");
             var op = newBaseOperation().sourcePath(path1, path2);
             assertEquals(4, op.sourcePath().size(), "size is not 4");
-            assertTrue(op.sourcePath().contains(path1.toString()), path1 + " not found in " + op.sourcePath());
-            assertTrue(op.sourcePath().contains(path2.toString()), path2 + " not found in " + op.sourcePath());
+            assertTrue(op.sourcePath().contains(path1.toAbsolutePath().toString()),
+                    path1 + " not found in " + op.sourcePath());
+            assertTrue(op.sourcePath().contains(path2.toAbsolutePath().toString()),
+                    path2 + " not found in " + op.sourcePath());
         }
 
         @Test

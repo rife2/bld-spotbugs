@@ -35,7 +35,7 @@ public class SpotBugsOperationBuild extends Project {
         pkg = "rife.bld.extension";
         name = "SpotBugs";
         archiveBaseName = "bld-spotbugs";
-        version = version(1, 1, 0);
+        version = version(1, 1, 1, "SNAPSHOTS");
 
         javaRelease = 17;
 
@@ -49,7 +49,7 @@ public class SpotBugsOperationBuild extends Project {
                 .include(dependency("com.uwyn.rife2", "bld-extensions-tools",
                         version(1, 2, 0)))
                 .include(dependency("com.fasterxml.jackson.core", "jackson-databind",
-                        version(2, 21, 2)))
+                        version(2, 21, 3)))
                 .include(dependency("com.uwyn.rife2", "bld",
                         version(2, 3, 1, "SNAPSHOT")));
         scope(provided)

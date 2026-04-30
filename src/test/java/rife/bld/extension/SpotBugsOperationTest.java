@@ -16,16 +16,18 @@
 
 package rife.bld.extension;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.io.TempDir;
 import rife.bld.BaseProject;
 import rife.bld.blueprints.BaseProjectBlueprint;
 import rife.bld.extension.spotbugs.Effort;
 import rife.bld.extension.spotbugs.Priority;
+import rife.bld.extension.spotbugs.SpotBugsFlag;
 import rife.bld.extension.testing.LoggingExtension;
 import rife.bld.extension.testing.TestLogHandler;
 import rife.bld.operations.exceptions.ExitStatusException;
@@ -34,16 +36,16 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(LoggingExtension.class)
-@SuppressWarnings("PMD.AvoidDuplicateLiterals")
-@SuppressFBWarnings("DMI_HARDCODED_ABSOLUTE_FILENAME")
+@SuppressWarnings({"PMD.AvoidDuplicateLiterals", "PMD.UseUtilityClass"})
 class SpotBugsOperationTest {
 
     private static final String SPOTBUGS_VERSION = "4.9.8";
@@ -52,89 +54,6 @@ class SpotBugsOperationTest {
         return new SpotBugsOperation()
                 .fromProject(new BaseProject())
                 .home("example/spotbugs-" + SPOTBUGS_VERSION);
-    }
-
-    @Test
-    @SuppressWarnings("ExtractMethodRecommender")
-    void validateSupportedCliCommands() throws IOException {
-        var supported = List.of(
-                "-adjustExperimental",
-                "-adjustPriority",
-                "-analyzeFromFile",
-                "-applySuppression",
-                "-auxclasspathFromFile",
-                "-bugCategories",
-                "-bugReporters",
-                "-choosePlugins",
-                "-chooseVisitors",
-                "-dontCombineWarnings",
-                "-effort",
-                "-emacs",
-                "-exclude",
-                "-excludeBugs",
-                "-experimental",
-                "-high",
-                "-html",
-                "-include",
-                "-jar",
-                "-longBugCodes",
-                "-low",
-                "-maxHeap",
-                "-maxRank",
-                "-medium",
-                "-nested",
-                "-noClassOk",
-                "-omitVisitors",
-                "-onlyAnalyze",
-                "-pluginList",
-                "-progress",
-                "-projectName",
-                "-relaxed",
-                "-release",
-                "-sarif",
-                "-sortByClass",
-                "-sourceInfo",
-                "-sourcepath",
-                "-textui",
-                "-timestampNow",
-                "-visitors",
-                "-workHard",
-                "-xml"
-        );
-
-        var unsupported = List.of(
-                "-auxclasspath",
-                "-auxclasspathFromInput",
-                "-conserveSpace",
-                "-exitcode",
-                "-home",
-                "-javahome",
-                "-jvmArgs",
-                "-name",
-                "-output",
-                "-printConfiguration",
-                "-project",
-                "-quiet",
-                "-reanalyze",
-                "-redoAnalysis",
-                "-showPlugins",
-                "-train",
-                "-userPrefs",
-                "-useTraining",
-                "-version",
-                "-xargs",
-                "-xdocs"
-        );
-
-        var all = new ArrayList<>(supported);
-        all.addAll(unsupported);
-
-        var cli = Files.readAllLines(Path.of("src", "test", "resources", "spotbugs-args.txt"));
-        assertFalse(cli.isEmpty(), "spotbugs-args is empty");
-
-        cli.forEach(cmd ->
-                assertTrue(all.contains(cmd), cmd + " is not supported")
-        );
     }
 
     @Nested
@@ -182,54 +101,30 @@ class SpotBugsOperationTest {
     class ExecuteTests {
 
         @SuppressWarnings("LoggerInitializedWithForeignClass")
-        private static final Logger LOGGER = Logger.getLogger(SpotBugsOperation.class.getName());
-        private static final TestLogHandler TEST_LOG_HANDLER = new TestLogHandler();
+        private static final Logger logger = Logger.getLogger(SpotBugsOperation.class.getName());
+        private static final TestLogHandler testLogHandler = new TestLogHandler();
 
         @RegisterExtension
         @SuppressWarnings("unused")
-        private static final LoggingExtension LOGGING_EXTENSION = new LoggingExtension(
-                LOGGER,
-                TEST_LOG_HANDLER,
+        private static final LoggingExtension loggingExtension = new LoggingExtension(
+                logger,
+                testLogHandler,
                 Level.FINEST
         );
 
         @Test
         void execute() {
-            LOGGER.setLevel(Level.WARNING);
+            logger.setLevel(Level.WARNING);
             var op = newBaseOperation();
             assertThrows(ExitStatusException.class, op::execute);
-            TEST_LOG_HANDLER.printLogMessages();
-            assertTrue(TEST_LOG_HANDLER.containsMessage("[spotbugs] Found"));
-        }
-
-        @Test
-        void executeExample() throws Exception {
-            var op = new SpotBugsOperation()
-                    .fromProject(
-                            new BaseProjectBlueprint(
-                                    new File("example"),
-                                    "com.example",
-                                    "Examples",
-                                    "example")
-                    )
-                    .ignoreFailures(true)
-                    .spotBugsJar("example/spotbugs-" + SPOTBUGS_VERSION + "/lib/spotbugs.jar");
-            op.execute();
-
-            assertFalse(TEST_LOG_HANDLER.containsMessage("DLS_DEAD_LOCAL_STORE"), "DLS_DEAD_LOCAL_STORE found");
-            assertTrue(TEST_LOG_HANDLER.containsMessage("EI_EXPOSE_REP2"), "EI_EXPOSE_REP2 not found");
-
-            TEST_LOG_HANDLER.clear();
-            op.exclude("example/excludeFilter.xml");
-            op.execute();
-
-            assertFalse(TEST_LOG_HANDLER.containsMessage("EI_EXPOSE_REP2"), "EI_EXPOSE_REP2 found");
+            testLogHandler.printLogMessages();
+            assertTrue(testLogHandler.containsExactMessage("Found 1 potential bug in 1 class"));
         }
 
         @Test
         void executeIgnoreFailureAndSilent() throws Exception {
             newBaseOperation().ignoreFailures(true).silent(true).execute();
-            assertTrue(TEST_LOG_HANDLER.isEmpty());
+            assertTrue(testLogHandler.isEmpty());
         }
 
         @Test
@@ -238,86 +133,109 @@ class SpotBugsOperationTest {
                     .fromProject(new BaseProject(), true)
                     .home("example/spotbugs-" + SPOTBUGS_VERSION);
             assertThrows(ExitStatusException.class, op::execute);
-            TEST_LOG_HANDLER.printLogMessages();
-            assertTrue(TEST_LOG_HANDLER.containsMessage("[spotbugs] Found"),
-                    "'[spotbugs]' Found not found");
-            assertTrue(TEST_LOG_HANDLER.containsMessage("Class: rife.bld.extension.SpotBugsOperationTest$Bugs"),
+            testLogHandler.printLogMessages();
+            assertTrue(testLogHandler.containsMessageMatching(
+                    Pattern.compile("Found \\d+ potential bugs in \\d+ classes")));
+            assertTrue(testLogHandler.containsMessage("Class: rife.bld.extension.SpotBugsOperationTest$Bugs"),
                     "Bugs class not found");
-            assertTrue(TEST_LOG_HANDLER.containsMessage("Method: selfAssignmentBug"),
+            assertTrue(testLogHandler.containsMessage("Method: selfAssignmentBug"),
                     "selfAssignmentBug method not found");
-            assertTrue(TEST_LOG_HANDLER.containsMessage("Method: nullPointerExceptionCaughtBug"),
+            assertTrue(testLogHandler.containsMessage("Method: nullPointerExceptionCaughtBug"),
                     "nullPointerExceptionCaughtBug method not found");
-            assertTrue(TEST_LOG_HANDLER.containsMessage("Field: bugs"),
+            assertTrue(testLogHandler.containsMessage("Field: bugs"),
                     "bugs field not found");
-            assertTrue(TEST_LOG_HANDLER.containsMessage(
+            assertTrue(testLogHandler.containsMessage(
                             "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#urf-unread-field"),
                     "bug description URL not found");
-            assertTrue(TEST_LOG_HANDLER.containsMessage(
+            assertTrue(testLogHandler.containsMessage(
                             "//fb-contrib.sourceforge.net/bugdescriptions.html#UAC_UNNECESSARY_API_CONVERSION_FILE_TO_PATH"),
                     "fb-contrib bug description URL not found");
         }
 
         @Test
         void executeNoLogging() throws Exception {
-            LOGGER.setLevel(Level.OFF);
+            logger.setLevel(Level.OFF);
             newBaseOperation().ignoreFailures(true).execute();
-            assertTrue(TEST_LOG_HANDLER.isEmpty());
+            assertTrue(testLogHandler.isEmpty());
         }
 
         @Test
         void executeSilent() {
             var op = newBaseOperation().silent(true);
             assertThrows(ExitStatusException.class, op::execute);
-            assertTrue(TEST_LOG_HANDLER.isEmpty());
+            assertTrue(testLogHandler.isEmpty());
+        }
+
+        @Test
+        void executeWithDefaultAnalyze() {
+            var op = newBaseOperation();
+            assertThrows(ExitStatusException.class, op::execute);
         }
 
         @Test
         void executeWithDetailedMessage() {
-            LOGGER.setLevel(Level.WARNING);
+            logger.setLevel(Level.WARNING);
             var op = newBaseOperation().detailedMessage(true);
             assertThrows(ExitStatusException.class, op::execute);
-            TEST_LOG_HANDLER.printLogMessages();
-            assertTrue(TEST_LOG_HANDLER.containsMessage("CC_CYCLOMATIC_COMPLEXITY"));
+            testLogHandler.printLogMessages();
+            assertTrue(testLogHandler.containsMessage("CC_CYCLOMATIC_COMPLEXITY"));
+        }
+
+        @Test
+        void executeWithEmptyXmlReport() throws Exception {
+            var emptyXml = Files.createTempFile("spotbugs", ".xml").toFile();
+            emptyXml.deleteOnExit();
+
+            var emptySarif = Files.createTempFile("spotbugs", ".sarif").toFile();
+            emptySarif.deleteOnExit();
+
+            var emptyJar = Files.createTempFile("empty", ".jar").toFile();
+            emptyJar.deleteOnExit();
+
+            var op = new SpotBugsOperation()
+                    .home("example/spotbugs-" + SPOTBUGS_VERSION)
+                    .analyze(emptyJar)
+                    .output(emptyXml)
+                    .sarif(emptySarif)
+                    .noClassOk(true)
+                    .ignoreFailures(true);
+
+            logger.setLevel(Level.INFO);
+            op.execute();
+
+            assertTrue(testLogHandler.containsExactMessage("No potential bugs found"));
+            assertFalse(testLogHandler.containsMessage("Found"), "Should not report bugs found");
+
+            // If you want to verify the XML itself, check it has 0 BugInstance nodes
+            var xml = Files.readString(emptyXml.toPath());
+            assertTrue(xml.contains("total_bugs=\"0\""), "SpotBugs summary should show 0 bugs");
+            assertFalse(xml.contains("<BugInstance"), "XML should contain no BugInstance elements");
         }
 
         @Test
         void executeWithExclude() throws ExitStatusException, IOException, InterruptedException {
             var op = newBaseOperation();
-
-            assertThrows(ExitStatusException.class, op::execute);
-            assertTrue(TEST_LOG_HANDLER.containsMessage("CC_CYCLOMATIC_COMPLEXITY"),
-                    "CC_CYCLOMATIC_COMPLEXITY not found");
-
-            TEST_LOG_HANDLER.clear();
-
             op.exclude("src/test/resources/excludeFilter.xml");
             op.ignoreFailures(true);
             op.execute();
 
-            TEST_LOG_HANDLER.printLogMessages();
-            assertTrue(TEST_LOG_HANDLER.containsExactMessage("[spotbugs] No potential bugs found"));
+            testLogHandler.printLogMessages();
+            assertTrue(testLogHandler.containsExactMessage("No potential bugs found"));
         }
 
         @Test
         void executeWithExcludeAll() {
-            var op = newBaseOperation();
-
-            assertThrows(ExitStatusException.class, op::execute);
-            assertTrue(TEST_LOG_HANDLER.containsMessage("CC_CYCLOMATIC_COMPLEXITY"),
-                    "CC_CYCLOMATIC_COMPLEXITY not found");
-
-            TEST_LOG_HANDLER.clear();
-
-            op = op.exclude("src/test/resources/excludeAllFilter.xml");
+            var op = newBaseOperation().exclude("src/test/resources/excludeAllFilter.xml");
             assertDoesNotThrow(op::execute);
-            TEST_LOG_HANDLER.printLogMessages();
-            assertFalse(TEST_LOG_HANDLER.containsMessage("EI_EXPOSE_REP"), "EI_EXPOSE_REP found");
+            testLogHandler.printLogMessages();
+            assertFalse(testLogHandler.containsMessage("EI_EXPOSE_REP"), "EI_EXPOSE_REP found");
         }
 
         @Test
         void executeWithIgnoreFailures() {
             assertDoesNotThrow(() -> newBaseOperation().ignoreFailures(true).execute());
-            assertTrue(TEST_LOG_HANDLER.containsMessage("[spotbugs] Found"));
+            testLogHandler.printLogMessages();
+            assertTrue(testLogHandler.containsExactMessage("Found 1 potential bug in 1 class"));
         }
 
         @Test
@@ -328,8 +246,8 @@ class SpotBugsOperationTest {
                     .home("example/spotbugs-" + SPOTBUGS_VERSION)
                     .include("src/test/resources/includeFilter.xml")
                     .execute();
-            TEST_LOG_HANDLER.printLogMessages();
-            assertTrue(TEST_LOG_HANDLER.containsExactMessage("[spotbugs] Found 1 potential bug in 1 class"));
+            testLogHandler.printLogMessages();
+            assertTrue(testLogHandler.containsExactMessage("Found 1 potential bug in 1 class"));
         }
 
         @Test
@@ -361,24 +279,24 @@ class SpotBugsOperationTest {
                     .spotBugsJar("example/spotbugs-" + SPOTBUGS_VERSION + "/lib/spotbugs.jar")
                     .ignoreFailures(true)
                     .execute();
-            TEST_LOG_HANDLER.printLogMessages();
-            assertTrue(TEST_LOG_HANDLER.containsMessage("[spotbugs] Found"));
+            testLogHandler.printLogMessages();
+            assertTrue(testLogHandler.containsExactMessage("Found 1 potential bug in 1 class"));
         }
 
         @Test
         void executeWithLineNumbers() {
             var op = newBaseOperation().includeLineNumber(true);
             assertThrows(ExitStatusException.class, op::execute);
-            TEST_LOG_HANDLER.printLogMessages();
-            assertTrue(TEST_LOG_HANDLER.containsMessage(".java:"));
+            testLogHandler.printLogMessages();
+            assertTrue(testLogHandler.containsMessage(".java:"));
         }
 
         @Test
         void executeWithRank() throws Exception {
-            LOGGER.setLevel(Level.INFO);
+            logger.setLevel(Level.INFO);
             newBaseOperation().maxRank(6).execute();
-            TEST_LOG_HANDLER.printLogMessages();
-            assertTrue(TEST_LOG_HANDLER.containsMessage("[spotbugs] No potential bugs found"));
+            testLogHandler.printLogMessages();
+            assertTrue(testLogHandler.containsExactMessage("No potential bugs found"));
         }
 
         @Test
@@ -389,13 +307,8 @@ class SpotBugsOperationTest {
             var op = newBaseOperation().output(output);
             assertThrows(ExitStatusException.class, op::execute);
             assertTrue(output.length() > 0, "output file is empty");
-            assertTrue(TEST_LOG_HANDLER.containsMessage("[spotbugs] Found"));
-        }
-
-        @Test
-        void executeWithoutAnalyze() {
-            var op = newBaseOperation();
-            assertThrows(ExitStatusException.class, op::execute);
+            testLogHandler.printLogMessages();
+            assertTrue(testLogHandler.containsExactMessage("Found 1 potential bug in 1 class"));
         }
 
         @Test
@@ -417,14 +330,201 @@ class SpotBugsOperationTest {
         void executeWithoutLineNumbers() {
             var op = newBaseOperation().includeLineNumber(false);
             assertThrows(ExitStatusException.class, op::execute);
-            TEST_LOG_HANDLER.printLogMessages();
-            assertTrue(TEST_LOG_HANDLER.containsMessage("[Line "));
+            testLogHandler.printLogMessages();
+            assertTrue(testLogHandler.containsMessage("[Line "));
         }
 
         @Test
         void executeWithoutSourcePath() {
             var op = newBaseOperation();
             assertThrows(ExitStatusException.class, op::execute);
+        }
+
+        @BeforeEach
+        void setup() {
+            testLogHandler.clear();
+        }
+
+        @Nested
+        @DisplayName("Execute Example Tests")
+        class ExecuteExampleTests {
+
+            SpotBugsOperation op = new SpotBugsOperation()
+                    .fromProject(
+                            new BaseProjectBlueprint(
+                                    new File("example"),
+                                    "com.example",
+                                    "Examples",
+                                    "example")
+                    )
+                    .ignoreFailures(true)
+                    .spotBugsJar("example/spotbugs-" + SPOTBUGS_VERSION + "/lib/spotbugs.jar");
+
+            @Test
+            void executeExample() throws Exception {
+                op.execute();
+
+                assertFalse(testLogHandler.containsMessage("DLS_DEAD_LOCAL_STORE"), "DLS_DEAD_LOCAL_STORE found");
+                assertTrue(testLogHandler.containsMessage("EI_EXPOSE_REP2"), "EI_EXPOSE_REP2 not found");
+            }
+
+            @Test
+            void executeExampleWithExclude() throws Exception {
+                op.exclude("example/excludeFilter.xml");
+                op.execute();
+
+                assertFalse(testLogHandler.containsMessage("EI_EXPOSE_REP2"), "EI_EXPOSE_REP2 found");
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Flag Consistency Tests")
+    class FlagConsistencyTests {
+
+        private static final Set<SpotBugsFlag> IMPLEMENTED = EnumSet.of(
+                SpotBugsFlag.ADJUST_EXPERIMENTAL,
+                SpotBugsFlag.ADJUST_PRIORITY,
+                SpotBugsFlag.ANALYZE_FROM_FILE,
+                SpotBugsFlag.APPLY_SUPPRESSION,
+                SpotBugsFlag.AUX_CLASSPATH_FROM_FILE,
+                SpotBugsFlag.BUG_CATEGORIES,
+                SpotBugsFlag.BUG_REPORTERS,
+                SpotBugsFlag.CHOOSE_PLUGINS,
+                SpotBugsFlag.CHOOSE_VISITORS,
+                SpotBugsFlag.DONT_COMBINE_WARNINGS,
+                SpotBugsFlag.EFFORT,
+                SpotBugsFlag.EMACS,
+                SpotBugsFlag.EXCLUDE,
+                SpotBugsFlag.EXCLUDE_BUGS,
+                SpotBugsFlag.EXPERIMENTAL,
+                SpotBugsFlag.HIGH,
+                SpotBugsFlag.HTML,
+                SpotBugsFlag.INCLUDE,
+                SpotBugsFlag.LONG_BUG_CODES,
+                SpotBugsFlag.LOW,
+                SpotBugsFlag.MAX_RANK,
+                SpotBugsFlag.MEDIUM,
+                SpotBugsFlag.NESTED,
+                SpotBugsFlag.NO_CLASS_OK,
+                SpotBugsFlag.OMIT_VISITORS,
+                SpotBugsFlag.ONLY_ANALYZE,
+                SpotBugsFlag.PLUGIN_LIST,
+                SpotBugsFlag.PROGRESS,
+                SpotBugsFlag.PROJECT_NAME,
+                SpotBugsFlag.QUIET,
+                SpotBugsFlag.RELAXED,
+                SpotBugsFlag.RELEASE,
+                SpotBugsFlag.SARIF,
+                SpotBugsFlag.SORT_BY_CLASS,
+                SpotBugsFlag.SOURCE_INFO,
+                SpotBugsFlag.SOURCE_PATH,
+                SpotBugsFlag.TIMESTAMP_NOW,
+                SpotBugsFlag.VISITORS,
+                SpotBugsFlag.WORK_HARD,
+                SpotBugsFlag.XML_WITH_MESSAGES
+        );
+
+        @Test
+        void allImplementedFlagsAreRealSpotBugsFlags() throws IOException {
+            var real = realFlags();
+            for (var f : IMPLEMENTED) {
+                var base = f.flag().split("[:=]")[0];
+                assertTrue(real.contains(base),
+                        "IMPLEMENTED lists flag not supported by SpotBugs: " + base);
+            }
+        }
+
+        @Test
+        void allRealSpotBugsFlagsAreImplementedOrKnown() throws IOException {
+            var real = realFlags();
+            var enumFlags = Arrays.stream(SpotBugsFlag.values())
+                    .map(f -> f.flag().split("[:=]")[0])
+                    .collect(Collectors.toSet());
+
+            var missing = new TreeSet<>(real);
+            missing.removeAll(enumFlags);
+
+            assertTrue(missing.isEmpty(),
+                    "SpotBugs supports flags not in SpotBugsFlag enum: " + missing +
+                            ". Add them to the enum or explicitly exclude them.");
+        }
+
+        @Test
+        void implementedSetMatchesEmittedFlags(@TempDir Path temp) throws Exception {
+            var dummyClass = temp.resolve("Dummy.class");
+            Files.createFile(dummyClass);
+            var dummyFile = temp.resolve("dummy.txt");
+            Files.createFile(dummyFile);
+            var dummyPath = dummyFile.toAbsolutePath().toString();
+
+            var op = new SpotBugsOperation()
+                    .spotBugsJar("example/spotbugs-" + SPOTBUGS_VERSION + "/lib/spotbugs.jar")
+                    .output(temp.resolve("out.xml").toFile())
+                    .analyze(dummyClass.toFile())
+                    .quiet(true)
+                    .timestampNow(true)
+                    .projectName("test")
+                    .effort(Effort.MAX)
+                    .adjustExperimental(true)
+                    .workHard(true)
+                    .longBugCodes(true)
+                    .progress(true)
+                    .release("1.0")
+                    .experimental(true)
+                    .low(true)
+                    .medium(true)
+                    .high(true)
+                    .maxRank(10)
+                    .dontCombineWarnings(true)
+                    .sortByClass(true)
+                    .relaxed(true)
+                    .sourceInfo(dummyPath)
+                    .nested(true)
+                    .html(temp.resolve("out.html").toString())
+                    .sarif(temp.resolve("out.sarif").toString())
+                    .emacs(temp.resolve("out.emacs").toString())
+                    .bugCategories("CORRECTNESS")
+                    .onlyAnalyze("com.foo")
+                    .excludeBugs(dummyPath)
+                    .exclude(dummyPath)
+                    .include(dummyPath)
+                    .applySuppression(true)
+                    .visitors("FindNullDeref")
+                    .chooseVisitors("+FindNullDeref")
+                    .omitVisitors("DumbMethods")
+                    .choosePlugins("+fb-contrib")
+                    .adjustPriority("FindNullDeref", 1)
+                    .noClassOk(true)
+                    .bugReporters("Default")
+                    .pluginList(dummyPath)
+                    .auxClasspath(dummyPath)
+                    .sourcePath(temp.resolve("src").toAbsolutePath().toString());
+
+            var cmd = op.executeConstructProcessCommandList();
+
+            var emitted = cmd.stream()
+                    .filter(s -> s.startsWith("-"))
+                    .map(s -> s.split("[:=]")[0])
+                    .filter(s -> !"-jar".equals(s) && !s.startsWith("-Xmx") && !s.startsWith("-Dfindbugs") && !"-textui".equals(s))
+                    .collect(Collectors.toSet());
+
+            var implementedBases = IMPLEMENTED.stream()
+                    .map(f -> f.flag().split("[:=]")[0])
+                    .collect(Collectors.toSet());
+
+            for (var e : emitted) {
+                assertTrue(implementedBases.contains(e),
+                        "executeConstructProcessCommandList emitted undeclared flag: " + e);
+            }
+        }
+
+        private Set<String> realFlags() throws IOException {
+            return Files.readAllLines(Path.of("src", "test", "resources", "spotbugs-args.txt")).stream()
+                    .map(String::trim)
+                    .filter(s -> s.startsWith("-"))
+                    .map(s -> s.split("[:=]")[0])
+                    .collect(Collectors.toSet());
         }
     }
 
@@ -490,7 +590,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             op.analyze(foo, bar);
-            assertEquals(3, op.analyze().size(), "size is not 3");
+            assertEquals(2, op.analyze().size(), "size is not 2");
             assertTrue(op.analyze().contains(foo), "foo not found");
             assertTrue(op.analyze().contains(bar), "bar not found");
         }
@@ -502,7 +602,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             op.analyze(foo, bar);
-            assertEquals(3, op.analyze().size(), "size is not 3");
+            assertEquals(2, op.analyze().size(), "size is not 2");
         }
 
         @Test
@@ -512,7 +612,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             op.analyze(List.of(foo, bar));
-            assertEquals(3, op.analyze().size(), "size is not 3");
+            assertEquals(2, op.analyze().size(), "size is not 2");
             assertTrue(op.analyze().contains(foo), "foo not found");
             assertTrue(op.analyze().contains(bar), "bar not found");
         }
@@ -522,7 +622,7 @@ class SpotBugsOperationTest {
             var foo = Path.of("foo");
             var bar = Path.of("bar");
             var op = newBaseOperation().analyze(foo, bar);
-            assertEquals(3, op.analyze().size(), "size is not 3");
+            assertEquals(2, op.analyze().size(), "size is not 2");
         }
 
         @Test
@@ -532,7 +632,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             op.analyzePaths(List.of(foo, bar));
-            assertEquals(3, op.analyze().size(), "size is not 3");
+            assertEquals(2, op.analyze().size(), "size is not 2");
             assertTrue(op.analyze().contains(foo.toFile()), "foo not found");
             assertTrue(op.analyze().contains(bar.toFile()), "bar not found");
         }
@@ -544,7 +644,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             op.analyze(foo, bar);
-            assertEquals(3, op.analyze().size(), "size is not 3");
+            assertEquals(2, op.analyze().size(), "size is not 2");
         }
 
         @Test
@@ -554,7 +654,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             op.analyzeStrings(List.of(foo, bar));
-            assertEquals(3, op.analyze().size(), "size is not 3");
+            assertEquals(2, op.analyze().size(), "size is not 2");
             assertTrue(op.analyze().contains(new File(foo)), "foo not found");
             assertTrue(op.analyze().contains(new File(bar)), "bar not found");
         }
@@ -583,7 +683,7 @@ class SpotBugsOperationTest {
 
             op.auxClasspath(path1, path2);
 
-            assertEquals(9, op.auxClasspath().size(), "size is not 9");
+            assertEquals(2, op.auxClasspath().size(), "size is not 2");
             assertTrue(op.auxClasspath().contains(path1), path1 + " not found");
             assertTrue(op.auxClasspath().contains(path2), path2 + " not found");
         }
@@ -595,7 +695,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             op.auxClasspath(List.of(path1, path2));
-            assertEquals(9, op.auxClasspath().size(), "size is not 9");
+            assertEquals(2, op.auxClasspath().size(), "size is not 2");
             assertTrue(op.auxClasspath().contains(path1), path1 + " not found");
             assertTrue(op.auxClasspath().contains(path2), path2 + " not found");
         }
@@ -883,18 +983,18 @@ class SpotBugsOperationTest {
 
         @Test
         void excludeAsPath() {
-            var foo = new File("foo");
+            var foo = Path.of("foo");
             var op = newBaseOperation();
 
             assertNull(op.exclude(), "exclude should be null");
 
-            op = op.exclude(foo.toPath());
-            assertEquals(foo, op.exclude(), "exclude should be foo");
+            op = op.exclude(foo);
+            assertEquals(foo.toFile(), op.exclude(), "exclude should be foo");
 
             var commandList = op.executeConstructProcessCommandList();
             assertTrue(commandList.contains("-exclude"),
                     "-exclude is not present in command list: " + commandList);
-            assertTrue(commandList.contains(foo.getAbsolutePath()),
+            assertTrue(commandList.contains(foo.toAbsolutePath().toString()),
                     "foo is not present in command list: " + commandList);
         }
 
@@ -1737,7 +1837,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation();
 
             op = op.sourcePath(path1, path2);
-            assertEquals(4, op.sourcePath().size(), "size is not 4");
+            assertEquals(2, op.sourcePath().size(), "size is not 2");
             assertTrue(op.sourcePath().contains(path1), path1 + " not found in " + op.sourcePath());
             assertTrue(op.sourcePath().contains(path2), path2 + " not found in " + op.sourcePath());
         }
@@ -1747,7 +1847,7 @@ class SpotBugsOperationTest {
             var path1 = Path.of("src", "main", "java").toFile();
             var path2 = Path.of("src", "main", "resources").toFile();
             var op = newBaseOperation().sourcePath(path1, path2);
-            assertEquals(4, op.sourcePath().size(), "size is not 4");
+            assertEquals(2, op.sourcePath().size(), "size is not 2");
             assertTrue(op.sourcePath().contains(path1.getAbsolutePath()), " not found in " + op.sourcePath());
             assertTrue(op.sourcePath().contains(path2.getAbsolutePath()), " not found in " + op.sourcePath());
         }
@@ -1757,7 +1857,7 @@ class SpotBugsOperationTest {
             var path1 = Path.of("src", "main", "java").toFile();
             var path2 = Path.of("src", "main", "resources").toFile();
             var op = newBaseOperation().sourcePathFiles(List.of(path1, path2));
-            assertEquals(4, op.sourcePath().size(), "size is not 4");
+            assertEquals(2, op.sourcePath().size(), "size is not 2");
             assertTrue(op.sourcePath().contains(path1.getAbsolutePath()),
                     path1 + " not found in " + op.sourcePath());
             assertTrue(op.sourcePath().contains(path2.getAbsolutePath()),
@@ -1769,7 +1869,7 @@ class SpotBugsOperationTest {
             var path1 = Path.of("src", "main", "java");
             var path2 = Path.of("src", "main", "resources");
             var op = newBaseOperation().sourcePath(path1, path2);
-            assertEquals(4, op.sourcePath().size(), "size is not 4");
+            assertEquals(2, op.sourcePath().size(), "size is not 2");
             assertTrue(op.sourcePath().contains(path1.toAbsolutePath().toString()),
                     path1 + " not found in " + op.sourcePath());
             assertTrue(op.sourcePath().contains(path2.toAbsolutePath().toString()),
@@ -1781,7 +1881,7 @@ class SpotBugsOperationTest {
             var path1 = Path.of("src", "main", "java");
             var path2 = Path.of("src", "main", "resources");
             var op = newBaseOperation().sourcePathPaths(List.of(path1, path2));
-            assertEquals(4, op.sourcePath().size(), "size is not 4");
+            assertEquals(2, op.sourcePath().size(), "size is not 2");
             assertTrue(op.sourcePath().contains(path1.toAbsolutePath().toFile().getAbsolutePath()),
                     path1 + " not found in " + op.sourcePath());
             assertTrue(op.sourcePath().contains(path2.toAbsolutePath().toString()),
@@ -1793,7 +1893,7 @@ class SpotBugsOperationTest {
             var path1 = "/src/main/java";
             var path2 = "/src/main/resources";
             var op = newBaseOperation().sourcePath(List.of(path1, path2));
-            assertEquals(4, op.sourcePath().size(), "size is not 4");
+            assertEquals(2, op.sourcePath().size(), "size is not 2");
             assertTrue(op.sourcePath().contains(path1), path1 + " not found in " + op.sourcePath());
             assertTrue(op.sourcePath().contains(path2), path2 + " not found in " + op.sourcePath());
         }
@@ -1901,33 +2001,6 @@ class SpotBugsOperationTest {
             var commandList = op.executeConstructProcessCommandList();
             assertTrue(commandList.contains("-workHard"),
                     "-workHard is not present in command list: " + commandList);
-        }
-    }
-
-    @Nested
-    @DisplayName("parseIntOrDefault Tests")
-    class ParseIntOrDefaultTests {
-
-        @Test
-        void parseIntOrDefaultWithEmptyString() {
-            assertEquals(42, SpotBugsOperation.parseIntOrDefault("", 42));
-        }
-
-        @Test
-        void parseIntOrDefaultWithInvalidIntegerString() {
-            assertEquals(-1, SpotBugsOperation.parseIntOrDefault("abc", -1));
-            assertEquals(0, SpotBugsOperation.parseIntOrDefault("12.34", 0));
-        }
-
-        @Test
-        void parseIntOrDefaultWithNullString() {
-            assertEquals(99, SpotBugsOperation.parseIntOrDefault(null, 99));
-        }
-
-        @Test
-        void parseIntOrDefaultWithValidIntegerString() {
-            assertEquals(123, SpotBugsOperation.parseIntOrDefault("123"));
-            assertEquals(-456, SpotBugsOperation.parseIntOrDefault("-456"));
         }
     }
 }

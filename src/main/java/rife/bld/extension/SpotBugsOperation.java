@@ -455,18 +455,36 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * <p>
      * Sets the following from the project:
      * <ul>
-     *     <li>{@link #analyze() analyze} to {@link BaseProject#buildMainDirectory() buildMainDirectory}</li>
      *     <li>
-     *         {@link #auxClasspath() auxClasspath} to {@link BaseProject#compileMainClasspath() compileMainClasspath}
+     *         {@link #analyze() analyze} to {@link BaseProject#buildMainDirectory() buildMainDirectory}, if not
+     *         already set
      *     </li>
-     *     <li>{@link #nested() nested} and {@link #timestampNow() timestampNow} to {@code true}</li>
-     *     <li>{@link #output() output} to {@code reports/spotbugs/spotbugs.xml} in the
-     *     {@link BaseProject#buildDirectory() buildDirectory}</li>
-     *     <li>{@link #projectName() projectName} to the {@link BaseProject#name() project name}</li>
-     *     <li>{@link #sarif() sarif} to {@code reports/spotbugs/spotbugs.sarif} in the
-     *     {@link BaseProject#buildDirectory() buildDirectory}</li>
-     *     <li>{@link #sourcePath() sourcePath} to {@link BaseProject#srcMainJavaDirectory() srcMainJavaDirectory}
-     *     and {@link BaseProject#srcMainResourcesDirectory() srcMainResourceDirectory}</li>
+     *     <li>
+     *         {@link #auxClasspath() auxClasspath} to {@link BaseProject#compileMainClasspath() compileMainClasspath},
+     *         if not already seet
+     *     </li>
+     *     <li>
+     *         {@link #nested() nested} and {@link #timestampNow() timestampNow} to {@code true}
+     *     </li>
+     *     <li>
+     *         {@link #output() output} to {@code reports/spotbugs/spotbugs.xml} in the
+     *         {@link BaseProject#buildDirectory() buildDirectory}, if not already set.
+     *     </li>
+     *     <li>
+     *         {@link #projectName() projectName} to the {@link BaseProject#name() project name}, if not already set
+     *     </li>
+     *     <li>
+     *         {@link #sarif() sarif} to {@code reports/spotbugs/spotbugs.sarif} in the
+     *         {@link BaseProject#buildDirectory() buildDirectory}, if not already set
+     *     </li>
+     *     <li>
+     *         {@link #sourcePath() sourcePath} to {@link BaseProject#srcMainJavaDirectory() srcMainJavaDirectory}
+     *         and {@link BaseProject#srcMainResourcesDirectory() srcMainResourceDirectory}, if not already set
+     *     </li>
+     *     <li>
+     *         {@link #workDirectory()} to the project's {@link BaseProject#workDirectory() workDirectory}, if not
+     *         already set.
+     *     </li>y_
      * </ul>
      *
      * @param project the project to configure the compile operation from
@@ -476,26 +494,40 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     @Override
     public SpotBugsOperation fromProject(@NonNull BaseProject project) {
         Objects.requireNonNull(project, "project must not be null");
-        workDirectory_ = project.workDirectory();
+
+        if (workDirectory_ == null) {
+            workDirectory_ = project.workDirectory();
+        }
 
         var reportsDir = IOTools.resolveFile(project.buildDirectory(), "reports", "spotbugs");
-        output_ = new File(reportsDir, SPOTBUGS_XML);
-        sarif_ = new File(reportsDir, SPOTBUGS_SARIF);
-
-        analyze_.clear();
-        sourcePath_.clear();
-        auxClasspath_.clear();
-
-        analyze_.add(project.buildMainDirectory());
-        sourcePath_.add(project.srcMainResourcesDirectory().getAbsolutePath());
-        sourcePath_.add(project.srcMainJavaDirectory().getAbsolutePath());
-        auxClasspath_.addAll(project.compileMainClasspath());
-
-        try {
-            projectName_ = project.name();
-        } catch (IllegalStateException ignored) {
-            // do nothing
+        if (output_ == null) {
+            output_ = new File(reportsDir, SPOTBUGS_XML);
         }
+        if (sarif_ == null) {
+            sarif_ = new File(reportsDir, SPOTBUGS_SARIF);
+        }
+
+        if (analyze_.isEmpty()) {
+            analyze_.add(project.buildMainDirectory());
+        }
+        if (sourcePath_.isEmpty()) {
+            sourcePath_.add(project.srcMainResourcesDirectory().getAbsolutePath());
+            sourcePath_.add(project.srcMainJavaDirectory().getAbsolutePath());
+        }
+        if (auxClasspath_.isEmpty()) {
+            auxClasspath_.addAll(project.compileMainClasspath());
+        }
+
+        if (projectName_ == null) {
+            try {
+                projectName_ = project.name();
+            } catch (IllegalStateException e) {
+                if (!silent() && logger.isLoggable(Level.WARNING)) {
+                    logger.log(Level.WARNING, "Could not set the project name", e);
+                }
+            }
+        }
+
         nested_ = true;
         timestampNow_ = true;
 

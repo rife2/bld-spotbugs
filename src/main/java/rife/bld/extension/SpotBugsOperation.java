@@ -48,6 +48,7 @@ import java.util.logging.Logger;
         value = "EI_EXPOSE_REP",
         justification = "Builder pattern intentionally exposes mutable collections"
 )
+@SuppressWarnings("PMD.GuardLogStatement")
 public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperation> {
 
     private static final String ANALYZE_NOT_VALID = "analyze values must not be null or empty";
@@ -93,13 +94,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     private boolean medium_;
     private boolean nested_;
     private boolean noClassOk_;
-    private File output_ = new File(SPOTBUGS_XML);
+    private File output_;
     private boolean progress_;
     private String projectName_;
     private boolean quiet_;
     private boolean relaxed_;
     private String release_;
-    private File sarif_ = new File(SPOTBUGS_SARIF);
+    private File sarif_;
     private boolean sortByClass_;
     private File sourceInfo_;
     private File spotBugsJar_;
@@ -153,6 +154,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         if (jar.isEmpty()) {
             throw new IllegalArgumentException(INVALID_SPOTBUGS_LOCATION);
         } else {
+            // Apply defaults if nothing set yet
+            if (output_ == null) {
+                output_ = new File(SPOTBUGS_XML);
+            }
+            if (sarif_ == null) {
+                sarif_ = new File(SPOTBUGS_SARIF);
+            }
+
             var parentFile = output_.getParentFile();
             if (!IOTools.mkdirs(parentFile)) {
                 throw new IllegalStateException("Could not create output directory: " + parentFile);
@@ -461,30 +470,31 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *     </li>
      *     <li>
      *         {@link #auxClasspath() auxClasspath} to {@link BaseProject#compileMainClasspath() compileMainClasspath},
-     *         if not already seet
+     *         if not already set
      *     </li>
      *     <li>
-     *         {@link #nested() nested} and {@link #timestampNow() timestampNow} to {@code true}
+     *         {@link #nested() nested} and {@link #timestampNow() timestampNow} to {@code true}.
      *     </li>
      *     <li>
      *         {@link #output() output} to {@code reports/spotbugs/spotbugs.xml} in the
      *         {@link BaseProject#buildDirectory() buildDirectory}, if not already set.
      *     </li>
      *     <li>
-     *         {@link #projectName() projectName} to the {@link BaseProject#name() project name}, if not already set
+     *         {@link #projectName() projectName} to the {@link BaseProject#name() project name}, if any and not
+     *         already set.
      *     </li>
      *     <li>
      *         {@link #sarif() sarif} to {@code reports/spotbugs/spotbugs.sarif} in the
-     *         {@link BaseProject#buildDirectory() buildDirectory}, if not already set
+     *         {@link BaseProject#buildDirectory() buildDirectory}, if not already set.
      *     </li>
      *     <li>
      *         {@link #sourcePath() sourcePath} to {@link BaseProject#srcMainJavaDirectory() srcMainJavaDirectory}
-     *         and {@link BaseProject#srcMainResourcesDirectory() srcMainResourceDirectory}, if not already set
+     *         and {@link BaseProject#srcMainResourcesDirectory() srcMainResourceDirectory}, if not already set.
      *     </li>
      *     <li>
      *         {@link #workDirectory()} to the project's {@link BaseProject#workDirectory() workDirectory}, if not
      *         already set.
-     *     </li>y_
+     *     </li>
      * </ul>
      *
      * @param project the project to configure the compile operation from
@@ -521,10 +531,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         if (projectName_ == null) {
             try {
                 projectName_ = project.name();
-            } catch (IllegalStateException e) {
-                if (!silent() && logger.isLoggable(Level.WARNING)) {
-                    logger.log(Level.WARNING, "Could not set the project name", e);
-                }
+            } catch (IllegalStateException ignored) {
+                // do nothing
             }
         }
 

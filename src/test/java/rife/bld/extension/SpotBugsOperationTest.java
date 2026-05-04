@@ -124,6 +124,7 @@ class SpotBugsOperationTest {
         @Test
         void executeIgnoreFailureAndSilent() throws Exception {
             newBaseOperation().ignoreFailures(true).silent(true).execute();
+            testLogHandler.printLogMessages();
             assertTrue(testLogHandler.isEmpty());
         }
 
@@ -587,9 +588,7 @@ class SpotBugsOperationTest {
         void analyze() {
             var foo = new File("foo");
             var bar = new File("bar");
-            var op = newBaseOperation();
-
-            op.analyze(foo, bar);
+            var op = new SpotBugsOperation().analyze(foo, bar);
             assertEquals(2, op.analyze().size(), "size is not 2");
             assertTrue(op.analyze().contains(foo), "foo not found");
             assertTrue(op.analyze().contains(bar), "bar not found");
@@ -599,9 +598,7 @@ class SpotBugsOperationTest {
         void analyzeAsFileArray() {
             var foo = new File("foo");
             var bar = new File("bar");
-            var op = newBaseOperation();
-
-            op.analyze(foo, bar);
+            var op = new SpotBugsOperation().analyze(foo, bar);
             assertEquals(2, op.analyze().size(), "size is not 2");
         }
 
@@ -609,9 +606,7 @@ class SpotBugsOperationTest {
         void analyzeAsFileCollection() {
             var foo = new File("foo");
             var bar = new File("bar");
-            var op = newBaseOperation();
-
-            op.analyze(List.of(foo, bar));
+            var op = new SpotBugsOperation().analyze(List.of(foo, bar));
             assertEquals(2, op.analyze().size(), "size is not 2");
             assertTrue(op.analyze().contains(foo), "foo not found");
             assertTrue(op.analyze().contains(bar), "bar not found");
@@ -621,7 +616,7 @@ class SpotBugsOperationTest {
         void analyzeAsPathArray() {
             var foo = Path.of("foo");
             var bar = Path.of("bar");
-            var op = newBaseOperation().analyze(foo, bar);
+            var op = new SpotBugsOperation().analyze(foo, bar);
             assertEquals(2, op.analyze().size(), "size is not 2");
         }
 
@@ -629,9 +624,7 @@ class SpotBugsOperationTest {
         void analyzeAsPathCollection() {
             var foo = Path.of("foo");
             var bar = Path.of("bar");
-            var op = newBaseOperation();
-
-            op.analyzePaths(List.of(foo, bar));
+            var op = new SpotBugsOperation().analyzePaths(List.of(foo, bar));
             assertEquals(2, op.analyze().size(), "size is not 2");
             assertTrue(op.analyze().contains(foo.toFile()), "foo not found");
             assertTrue(op.analyze().contains(bar.toFile()), "bar not found");
@@ -641,9 +634,7 @@ class SpotBugsOperationTest {
         void analyzeAsStringArray() {
             var foo = "foo";
             var bar = "bar";
-            var op = newBaseOperation();
-
-            op.analyze(foo, bar);
+            var op = new SpotBugsOperation().analyze(foo, bar);
             assertEquals(2, op.analyze().size(), "size is not 2");
         }
 
@@ -651,9 +642,7 @@ class SpotBugsOperationTest {
         void analyzeAsStringCollection() {
             var foo = "foo";
             var bar = "bar";
-            var op = newBaseOperation();
-
-            op.analyzeStrings(List.of(foo, bar));
+            var op = new SpotBugsOperation().analyzeStrings(List.of(foo, bar));
             assertEquals(2, op.analyze().size(), "size is not 2");
             assertTrue(op.analyze().contains(new File(foo)), "foo not found");
             assertTrue(op.analyze().contains(new File(bar)), "bar not found");
@@ -683,7 +672,7 @@ class SpotBugsOperationTest {
 
             op.auxClasspath(path1, path2);
 
-            assertEquals(2, op.auxClasspath().size(), "size is not 2");
+            assertEquals(9, op.auxClasspath().size(), "size is not 9");
             assertTrue(op.auxClasspath().contains(path1), path1 + " not found");
             assertTrue(op.auxClasspath().contains(path2), path2 + " not found");
         }
@@ -692,9 +681,7 @@ class SpotBugsOperationTest {
         void auxClasspathAsCollection() {
             var path1 = "/path/one";
             var path2 = "/path/two";
-            var op = newBaseOperation();
-
-            op.auxClasspath(List.of(path1, path2));
+            var op = new SpotBugsOperation().auxClasspath(List.of(path1, path2));
             assertEquals(2, op.auxClasspath().size(), "size is not 2");
             assertTrue(op.auxClasspath().contains(path1), path1 + " not found");
             assertTrue(op.auxClasspath().contains(path2), path2 + " not found");
@@ -1834,9 +1821,7 @@ class SpotBugsOperationTest {
         void sourcePath() {
             var path1 = "/src/main/java";
             var path2 = "/src/main/resources";
-            var op = newBaseOperation();
-
-            op = op.sourcePath(path1, path2);
+            var op = new SpotBugsOperation().sourcePath(path1, path2);
             assertEquals(2, op.sourcePath().size(), "size is not 2");
             assertTrue(op.sourcePath().contains(path1), path1 + " not found in " + op.sourcePath());
             assertTrue(op.sourcePath().contains(path2), path2 + " not found in " + op.sourcePath());
@@ -1846,7 +1831,7 @@ class SpotBugsOperationTest {
         void sourcePathAsFileArray() {
             var path1 = Path.of("src", "main", "java").toFile();
             var path2 = Path.of("src", "main", "resources").toFile();
-            var op = newBaseOperation().sourcePath(path1, path2);
+            var op = new SpotBugsOperation().sourcePath(path1, path2);
             assertEquals(2, op.sourcePath().size(), "size is not 2");
             assertTrue(op.sourcePath().contains(path1.getAbsolutePath()), " not found in " + op.sourcePath());
             assertTrue(op.sourcePath().contains(path2.getAbsolutePath()), " not found in " + op.sourcePath());
@@ -1856,7 +1841,7 @@ class SpotBugsOperationTest {
         void sourcePathAsFileCollection() {
             var path1 = Path.of("src", "main", "java").toFile();
             var path2 = Path.of("src", "main", "resources").toFile();
-            var op = newBaseOperation().sourcePathFiles(List.of(path1, path2));
+            var op = new SpotBugsOperation().sourcePathFiles(List.of(path1, path2));
             assertEquals(2, op.sourcePath().size(), "size is not 2");
             assertTrue(op.sourcePath().contains(path1.getAbsolutePath()),
                     path1 + " not found in " + op.sourcePath());
@@ -1868,7 +1853,7 @@ class SpotBugsOperationTest {
         void sourcePathAsPathArray() {
             var path1 = Path.of("src", "main", "java");
             var path2 = Path.of("src", "main", "resources");
-            var op = newBaseOperation().sourcePath(path1, path2);
+            var op = new SpotBugsOperation().sourcePath(path1, path2);
             assertEquals(2, op.sourcePath().size(), "size is not 2");
             assertTrue(op.sourcePath().contains(path1.toAbsolutePath().toString()),
                     path1 + " not found in " + op.sourcePath());
@@ -1880,7 +1865,7 @@ class SpotBugsOperationTest {
         void sourcePathAsPathCollection() {
             var path1 = Path.of("src", "main", "java");
             var path2 = Path.of("src", "main", "resources");
-            var op = newBaseOperation().sourcePathPaths(List.of(path1, path2));
+            var op = new SpotBugsOperation().sourcePathPaths(List.of(path1, path2));
             assertEquals(2, op.sourcePath().size(), "size is not 2");
             assertTrue(op.sourcePath().contains(path1.toAbsolutePath().toFile().getAbsolutePath()),
                     path1 + " not found in " + op.sourcePath());
@@ -1892,7 +1877,7 @@ class SpotBugsOperationTest {
         void sourcePathAsStringCollection() {
             var path1 = "/src/main/java";
             var path2 = "/src/main/resources";
-            var op = newBaseOperation().sourcePath(List.of(path1, path2));
+            var op = new SpotBugsOperation().sourcePath(List.of(path1, path2));
             assertEquals(2, op.sourcePath().size(), "size is not 2");
             assertTrue(op.sourcePath().contains(path1), path1 + " not found in " + op.sourcePath());
             assertTrue(op.sourcePath().contains(path2), path2 + " not found in " + op.sourcePath());

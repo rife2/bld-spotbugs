@@ -44,7 +44,10 @@ import java.util.logging.Logger;
  * @author <a href="https://erik.thauvin.net/">Erik C. Thauvin</a>
  * @since 1.0
  */
-@SuppressFBWarnings(value = "EI_EXPOSE_REP", justification = "intentional")
+@SuppressFBWarnings(
+        value = "EI_EXPOSE_REP",
+        justification = "Builder pattern intentionally exposes mutable collections"
+)
 public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperation> {
 
     private static final String ANALYZE_NOT_VALID = "analyze values must not be null or empty";
@@ -588,7 +591,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation analyze(@NonNull String... files) {
         ObjectTools.requireAllNotEmpty(files, ANALYZE_NOT_VALID);
-        analyze_.clear();
         analyze_.addAll(CollectionTools.combineStringsToFiles(files));
         return this;
     }
@@ -604,7 +606,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation analyze(@NonNull File... files) {
         ObjectTools.requireAllNotEmpty(files, ANALYZE_NOT_VALID);
-        analyze_.clear();
         analyze_.addAll(CollectionTools.combine(files));
         return this;
     }
@@ -621,7 +622,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation analyze(@NonNull Path... files) {
         ObjectTools.requireAllNotEmpty(files, ANALYZE_NOT_VALID);
-        analyze_.clear();
         analyze_.addAll(CollectionTools.combinePathsToFiles(files));
         return this;
     }
@@ -650,7 +650,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation analyze(@NonNull Collection<File> files) {
         ObjectTools.requireAllNotEmpty(files, ANALYZE_NOT_VALID);
-        analyze_.clear();
         analyze_.addAll(files);
         return this;
     }
@@ -665,7 +664,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation analyzePaths(@NonNull Collection<Path> files) {
         ObjectTools.requireAllNotEmpty(files, ANALYZE_NOT_VALID);
-        analyze_.clear();
         analyze_.addAll(CollectionTools.combinePathsToFiles(files));
         return this;
     }
@@ -680,7 +678,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation analyzeStrings(@NonNull Collection<String> files) {
         ObjectTools.requireAllNotEmpty(files, ANALYZE_NOT_VALID);
-        analyze_.clear();
         analyze_.addAll(CollectionTools.combineStringsToFiles(files));
         return this;
     }
@@ -720,7 +717,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation auxClasspath(@NonNull String... paths) {
         ObjectTools.requireAllNotEmpty(paths, "auxClasspath values must not be null or empty");
-        auxClasspath_.clear();
         auxClasspath_.addAll(CollectionTools.combine(paths));
         return this;
     }
@@ -738,7 +734,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation auxClasspath(@NonNull Collection<String> paths) {
         ObjectTools.requireAllNotEmpty(paths, "auxClasspath values must not be null or empty");
-        auxClasspath_.clear();
         auxClasspath_.addAll(paths);
         return this;
     }
@@ -764,7 +759,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation bugCategories(@NonNull String... categories) {
         ObjectTools.requireAllNotEmpty(categories, "bugCategories values must not be null or empty");
-        bugCategories_.clear();
         bugCategories_.addAll(CollectionTools.combine(categories));
         return this;
     }
@@ -779,7 +773,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation bugCategories(@NonNull Collection<String> categories) {
         ObjectTools.requireAllNotEmpty(categories, "bugCategories values must not be null or empty");
-        bugCategories_.clear();
         bugCategories_.addAll(categories);
         return this;
     }
@@ -807,7 +800,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation bugReporters(@NonNull String... reporters) {
         ObjectTools.requireAllNotEmpty(reporters, "bugReporters values must not be null or empty");
-        bugReporters_.clear();
         bugReporters_.addAll(CollectionTools.combine(reporters));
         return this;
     }
@@ -824,7 +816,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation bugReporters(@NonNull Collection<String> reporters) {
         ObjectTools.requireAllNotEmpty(reporters, "bugReporters values must not be null or empty");
-        bugReporters_.clear();
         bugReporters_.addAll(reporters);
         return this;
     }
@@ -852,7 +843,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation choosePlugins(@NonNull String... plugins) {
         ObjectTools.requireAllNotEmpty(plugins, "choosePlugins values must not be null or empty");
-        choosePlugins_.clear();
         choosePlugins_.addAll(CollectionTools.combine(plugins));
         return this;
     }
@@ -869,7 +859,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation choosePlugins(@NonNull Collection<String> plugins) {
         ObjectTools.requireAllNotEmpty(plugins, "choosePlugins values must not be null or empty");
-        choosePlugins_.clear();
         choosePlugins_.addAll(plugins);
         return this;
     }
@@ -897,7 +886,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation chooseVisitors(@NonNull String... visitors) {
         ObjectTools.requireAllNotEmpty(visitors, "chooseVisitors values must not be null or empty");
-        chooseVisitors_.clear();
         chooseVisitors_.addAll(CollectionTools.combine(visitors));
         return this;
     }
@@ -914,7 +902,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation chooseVisitors(@NonNull Collection<String> visitors) {
         ObjectTools.requireAllNotEmpty(visitors, "chooseVisitors values must not be null or empty");
-        chooseVisitors_.clear();
         chooseVisitors_.addAll(visitors);
         return this;
     }
@@ -1660,7 +1647,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation jvmArgs(@NonNull String... args) {
         ObjectTools.requireAllNotEmpty(args, "jvmArgs values must not be null or empty");
-        jvmArgs_.clear();
         jvmArgs_.addAll(CollectionTools.combine(args));
         return this;
     }
@@ -1675,7 +1661,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation jvmArgs(@NonNull Collection<String> args) {
         ObjectTools.requireAllNotEmpty(args, "jvmArgs values must not be null or empty");
-        jvmArgs_.clear();
         jvmArgs_.addAll(args);
         return this;
     }
@@ -1864,7 +1849,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation omitVisitors(@NonNull String... visitors) {
         ObjectTools.requireAllNotEmpty(visitors, "omitVisitors values must not be null or empty");
-        omitVisitors_.clear();
         omitVisitors_.addAll(List.of(visitors));
         return this;
     }
@@ -1879,7 +1863,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation omitVisitors(@NonNull Collection<String> visitors) {
         ObjectTools.requireAllNotEmpty(visitors, "omitVisitors values must not be null or empty");
-        omitVisitors_.clear();
         omitVisitors_.addAll(visitors);
         return this;
     }
@@ -1917,7 +1900,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation onlyAnalyze(@NonNull String... patterns) {
         ObjectTools.requireAllNotEmpty(patterns, "onlyAnalyze values must not be null or empty");
-        onlyAnalyze_.clear();
         onlyAnalyze_.addAll(CollectionTools.combine(patterns));
         return this;
     }
@@ -1944,7 +1926,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation onlyAnalyze(@NonNull Collection<String> patterns) {
         ObjectTools.requireAllNotEmpty(patterns, "onlyAnalyze values must not be null or empty");
-        onlyAnalyze_.clear();
         onlyAnalyze_.addAll(CollectionTools.combine(patterns));
         return this;
     }
@@ -2033,7 +2014,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation pluginList(@NonNull String... plugins) {
         ObjectTools.requireAllNotEmpty(plugins, "pluginList values must not be null or empty");
-        pluginList_.clear();
         pluginList_.addAll(CollectionTools.combine(plugins));
         return this;
     }
@@ -2048,7 +2028,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation pluginList(@NonNull Collection<String> plugins) {
         ObjectTools.requireAllNotEmpty(plugins, "pluginList values must not be null or empty");
-        pluginList_.clear();
         pluginList_.addAll(CollectionTools.combine(plugins));
         return this;
     }
@@ -2315,7 +2294,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation sourcePath(@NonNull String... path) {
         ObjectTools.requireAllNotEmpty(path, SOURCE_PATH_NOT_VALID);
-        sourcePath_.clear();
         sourcePath_.addAll(List.of(path));
         return this;
     }
@@ -2332,7 +2310,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation sourcePath(@NonNull Path... path) {
         ObjectTools.requireAllNotEmpty(path, SOURCE_PATH_NOT_VALID);
-        sourcePath_.clear();
         sourcePath_.addAll(CollectionTools.combinePathsToStrings(path));
         return this;
     }
@@ -2349,7 +2326,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation sourcePath(@NonNull File... path) {
         ObjectTools.requireAllNotEmpty(path, SOURCE_PATH_NOT_VALID);
-        sourcePath_.clear();
         sourcePath_.addAll(CollectionTools.combineFilesToStrings(path));
         return this;
     }
@@ -2379,7 +2355,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation sourcePath(@NonNull Collection<String> path) {
         ObjectTools.requireAllNotEmpty(path, SOURCE_PATH_NOT_VALID);
-        sourcePath_.clear();
         sourcePath_.addAll(path);
         return this;
     }
@@ -2396,7 +2371,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation sourcePathFiles(@NonNull Collection<File> path) {
         ObjectTools.requireAllNotEmpty(path, SOURCE_PATH_NOT_VALID);
-        sourcePath_.clear();
         sourcePath_.addAll(CollectionTools.combineFilesToStrings(path));
         return this;
     }
@@ -2413,7 +2387,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation sourcePathPaths(@NonNull Collection<Path> path) {
         ObjectTools.requireAllNotEmpty(path, SOURCE_PATH_NOT_VALID);
-        sourcePath_.clear();
         sourcePath_.addAll(CollectionTools.combinePathsToStrings(path));
         return this;
     }
@@ -2507,7 +2480,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation visitors(@NonNull String... visitors) {
         ObjectTools.requireAllNotEmpty(visitors, "visitors values must not be null or empty");
-        visitors_.clear();
         visitors_.addAll(CollectionTools.combine(visitors));
         return this;
     }
@@ -2522,7 +2494,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public SpotBugsOperation visitors(@NonNull Collection<String> visitors) {
         ObjectTools.requireAllNotEmpty(visitors, "visitors values must not be null or empty");
-        visitors_.clear();
         visitors_.addAll(CollectionTools.combine(visitors));
         return this;
     }

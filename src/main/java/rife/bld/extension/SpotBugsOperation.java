@@ -37,7 +37,6 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
 /**
  * Run SpotBugs with the specified arguments.
  *
@@ -48,7 +47,6 @@ import java.util.logging.Logger;
         value = "EI_EXPOSE_REP",
         justification = "Builder pattern intentionally exposes mutable collections"
 )
-@SuppressWarnings("PMD.GuardLogStatement")
 public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperation> {
 
     private static final String ANALYZE_NOT_VALID = "analyze values must not be null or empty";
@@ -105,15 +103,19 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     private File sourceInfo_;
     private File spotBugsJar_;
     private boolean timestampNow_;
+    private File userPrefs_;
     private File workDirectory_;
     private boolean workHard_;
 
     /**
      * Performs the operation.
      *
-     * @throws InterruptedException when the operation was interrupted
-     * @throws IOException          when an exception occurred during the execution of the process
-     * @throws ExitStatusException  when the exit status was changed during the operation
+     * @throws InterruptedException     when the operation was interrupted
+     * @throws IOException              when an exception occurred during the execution of the process
+     * @throws ExitStatusException      when the exit status was changed during the operation
+     * @throws IllegalArgumentException if SpotBugs location is not valid
+     * @throws IllegalStateException    if the output directory cannot be created
+     * @throws UncheckedIOException     if temporary files cannot be created or written
      */
     @Override
     public void execute() throws IOException, InterruptedException, ExitStatusException {
@@ -141,6 +143,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Part of the execute operation constructs the command list to use for building the process.
      *
      * @return a list of strings representing the commands or an empty list if no commands are constructed.
+     * @throws IllegalArgumentException if SpotBugs location is not valid
+     * @throws IllegalStateException    if the output directory cannot be created
+     * @throws UncheckedIOException     if temporary files cannot be created or written
      */
     @Override
     @SuppressFBWarnings({"EXS_EXCEPTION_SOFTENING_NO_CHECKED"})
@@ -499,6 +504,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param project the project to configure the compile operation from
      * @return this operation instance
+     * @throws NullPointerException if {@code project} is {@code null}
      * @see #fromProject(BaseProject, boolean)
      */
     @Override
@@ -542,7 +548,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         return this;
     }
 
-
+    /**
+     * Writes the given lines to a file.
+     *
+     * @param lines the lines to write
+     * @param file  the target file
+     * @throws IOException if an I/O error occurs writing to the file
+     */
     private static void writeLinesToFile(Iterable<String> lines, File file) throws IOException {
         Files.write(file.toPath(), lines);
     }
@@ -593,6 +605,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param name     the detector or bug pattern name
      * @param priority the priority level to adjust
      * @return this operation
+     * @throws IllegalArgumentException if the {@code name} is {@code null} or empty
      * @see #adjustPriority(String, Priority)
      * @see #adjustPriorities()
      */
@@ -609,6 +622,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param name     the detector or bug pattern name
      * @param priority the priority level to adjust
      * @return this operation
+     * @throws IllegalArgumentException if the {@code name} is {@code null} or empty
+     * @throws NullPointerException     if the {@code priority} is {@code null}
      * @see #adjustPriority(String, int)
      * @see #adjustPriorities()
      */
@@ -624,6 +639,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param files array of file paths to analyze
      * @return this operation
+     * @throws IllegalArgumentException if the {@code files} array or its elements are {@code null} or empty
      * @see #analyze(File...)
      * @see #analyze(Path...)
      * @see #analyze(Collection)
@@ -640,6 +656,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param files array of files to analyze
      * @return this operation
+     * @throws IllegalArgumentException if the {@code files} array or its elements are {@code null} or empty
      * @see #analyze(String...)
      * @see #analyze(Path...)
      * @see #analyze(Collection)
@@ -655,6 +672,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param files array of files to analyze
      * @return this operation
+     * @throws IllegalArgumentException if the {@code files} array or its elements are {@code null} or empty
      * @see #analyze(String...)
      * @see #analyze(File...)
      * @see #analyze(Collection)
@@ -684,6 +702,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param files collection of files to analyze
      * @return this operation
+     * @throws IllegalArgumentException if the {@code files} collection or its elements are {@code null} or empty
      * @see #analyze(String...)
      * @see #analyze(File...)
      * @see #analyze(Path...)
@@ -699,6 +718,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param files collection of files to analyze
      * @return this operation
+     * @throws IllegalArgumentException if the {@code files} collection or its elements are {@code null} or empty
      * @see #analyze(Path...)
      * @see #analyze(Collection)
      */
@@ -713,6 +733,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param files collection of files to analyze
      * @return this operation
+     * @throws IllegalArgumentException if the {@code files} collection or its elements are {@code null} or empty
      * @see #analyze(String...)
      * @see #analyze(Collection)
      */
@@ -752,6 +773,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param paths the auxiliary paths to set
      * @return this operation
+     * @throws IllegalArgumentException if the {@code paths} array or its elements are {@code null} or empty
      * @see #auxClasspath(Collection)
      * @see #auxClasspath()
      */
@@ -769,6 +791,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param paths the auxiliary paths to set
      * @return this operation
+     * @throws IllegalArgumentException if the {@code paths} collection or its elements are {@code null} or empty
      * @see #auxClasspath(String...)
      * @see #auxClasspath()
      */
@@ -794,6 +817,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param categories the bug categories
      * @return this operation
+     * @throws IllegalArgumentException if the {@code categories} array or its elements are {@code null} or empty
      * @see #bugCategories(Collection)
      * @see #bugCategories()
      */
@@ -808,6 +832,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param categories the bug categories
      * @return this operation
+     * @throws IllegalArgumentException if the {@code categories} collection or its elements are {@code null} or empty
      * @see #bugCategories(String...)
      * @see #bugCategories()
      */
@@ -835,6 +860,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param reporters the reporters to enable/disable
      * @return this operation
+     * @throws IllegalArgumentException if the {@code reporters} array or its elements are {@code null} or empty
      * @see #bugReporters(Collection)
      * @see #bugReporters()
      */
@@ -851,6 +877,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param reporters the reporters to enable/disable
      * @return this operation
+     * @throws IllegalArgumentException if the {@code reporters} collection or its elements are {@code null} or empty
      * @see #bugReporters(String...)
      * @see #bugReporters()
      */
@@ -878,6 +905,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param plugins the plugins to enable/disable
      * @return this operation
+     * @throws IllegalArgumentException if the {@code plugins} array or its elements are {@code null} or empty
      * @see #choosePlugins(Collection)
      * @see #choosePlugins()
      */
@@ -894,6 +922,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param plugins the plugins to enable/disable
      * @return this operation
+     * @throws IllegalArgumentException if the {@code plugins} collection or its elements are {@code null} or empty
      * @see #choosePlugins(String...)
      * @see #choosePlugins()
      */
@@ -921,6 +950,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param visitors the visitors to enable/disable
      * @return this operation
+     * @throws IllegalArgumentException if the {@code visitors} array or its elements are {@code null} or empty
      * @see #chooseVisitors(Collection)
      * @see #chooseVisitors()
      */
@@ -937,6 +967,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param visitors the visitors to enable/disable
      * @return this operation
+     * @throws IllegalArgumentException if the {@code visitors} collection or its elements are {@code null} or empty
      * @see #chooseVisitors(String...)
      * @see #chooseVisitors()
      */
@@ -1041,6 +1072,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param effort the effort level
      * @return this operation
+     * @throws NullPointerException if {@code effort} is {@code null}
      * @see Effort
      * @see #effort()
      */
@@ -1065,6 +1097,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param file the output file
      * @return this operation
+     * @throws NullPointerException if {@code file} is {@code null}
      * @see #emacs(String)
      * @see #emacs(Path)
      * @see #emacs()
@@ -1080,6 +1113,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param file the output file
      * @return this operation
+     * @throws NullPointerException if {@code file} is {@code null}
      * @see #emacs(String)
      * @see #emacs(File)
      * @see #emacs()
@@ -1095,6 +1129,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param file the output file
      * @return this operation
+     * @throws IllegalArgumentException if {@code file} is {@code null} or empty
      * @see #emacs(File)
      * @see #emacs(Path)
      * @see #emacs()
@@ -1123,6 +1158,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param excludeFilter the filter file
      * @return this operation
+     * @throws NullPointerException if {@code excludeFilter} is {@code null}
      * @see #exclude(String)
      * @see #exclude(Path)
      * @see #exclude()
@@ -1139,6 +1175,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param excludeFilter the filter file
      * @return this operation
+     * @throws IllegalArgumentException if {@code excludeFilter} is {@code null} or empty
      * @see #exclude(File)
      * @see #exclude(Path)
      * @see #exclude()
@@ -1155,6 +1192,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param excludeFilter the filter file
      * @return this operation
+     * @throws NullPointerException if {@code excludeFilter} is {@code null}
      * @see #exclude(File)
      * @see #exclude(String)
      * @see #exclude()
@@ -1182,6 +1220,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param excludeFile the exclude file
      * @return this operation
+     * @throws IllegalArgumentException if {@code excludeFile} is {@code null} or empty
      * @see #excludeBugs(File)
      * @see #excludeBugs(Path)
      * @see #excludeBugs()
@@ -1197,6 +1236,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param excludeFile the exclude file
      * @return this operation
+     * @throws NullPointerException if {@code excludeFile} is {@code null}
      * @see #excludeBugs(String)
      * @see #excludeBugs(Path)
      * @see #excludeBugs()
@@ -1212,6 +1252,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param excludeFile the exclude file
      * @return this operation
+     * @throws NullPointerException if {@code excludeFile} is {@code null}
      * @see #excludeBugs(File)
      * @see #excludeBugs(String)
      * @see #excludeBugs()
@@ -1281,6 +1322,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param project     the project to configure the compile operation from
      * @param includeTest set to {@code true} to include test directories, {@code false} otherwise
      * @return this operation instance
+     * @throws NullPointerException if {@code project} is {@code null}
      * @see #fromProject(BaseProject)
      */
     public SpotBugsOperation fromProject(@NonNull BaseProject project, boolean includeTest) {
@@ -1323,6 +1365,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param home the home directory
      * @return this operation
+     * @throws IllegalArgumentException if {@code home} is {@code null} or empty
      * @see #home(File)
      * @see #home(Path)
      * @see #home()
@@ -1338,6 +1381,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param home the home directory
      * @return this operation
+     * @throws NullPointerException if {@code home} is {@code null}
      * @see #home(String)
      * @see #home(Path)
      * @see #home()
@@ -1353,6 +1397,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param home the home directory
      * @return this operation
+     * @throws NullPointerException if {@code home} is {@code null}
      * @see #home(String)
      * @see #home(File)
      * @see #home()
@@ -1380,6 +1425,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param file the output file
      * @return this operation
+     * @throws NullPointerException if {@code file} is {@code null}
      * @see #html(String)
      * @see #html(Path)
      * @see #html(String, String)
@@ -1398,6 +1444,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param filePath the output file
      * @return this operation
+     * @throws NullPointerException if {@code filePath} is {@code null}
      * @see #html(String)
      * @see #html(File)
      * @see #html(String, String)
@@ -1416,6 +1463,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param file the output file
      * @return this operation
+     * @throws IllegalArgumentException if {@code file} is {@code null} or empty
      * @see #html(File)
      * @see #html(Path)
      * @see #html(String, String)
@@ -1456,8 +1504,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * <li>{@code fancy-hist.xsl}</li>
      * </ul>
      * <p>
-     * The {@code plain.xsl} stylesheet does not use JavaScript or DOM, and may work better with older web browsers, or
-     * for printing.
+     * The {@code plain.xsl} stylesheet does not use JavaScript or DOM, and may work better with older web browsers,
+     * or for printing.
      * <p>
      * The {@code fancy.xsl} stylesheet uses DOM and JavaScript for navigation and CSS for visual presentation.
      * <p>
@@ -1470,6 +1518,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param file       the output file
      * @param stylesheet the stylesheet to use
      * @return this operation
+     * @throws IllegalArgumentException if {@code file} or {@code stylesheet} is {@code null} or empty
      * @see #html(String)
      * @see #html(Path)
      * @see #html(File)
@@ -1497,8 +1546,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * <li>{@code fancy-hist.xsl}</li>
      * </ul>
      * <p>
-     * The {@code plain.xsl} stylesheet does not use JavaScript or DOM, and may work better with older web browsers, or
-     * for printing.
+     * The {@code plain.xsl} stylesheet does not use JavaScript or DOM, and may work better with older web browsers,
+     * or for printing.
      * <p>
      * The {@code fancy.xsl} stylesheet uses DOM and JavaScript for navigation and CSS for visual presentation.
      * <p>
@@ -1511,6 +1560,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param filePath   the output file
      * @param stylesheet the stylesheet to use
      * @return this operation
+     * @throws NullPointerException if {@code filePath} or {@code stylesheet} is {@code null}
      * @see #html(String)
      * @see #html(File)
      * @see #html(Path)
@@ -1552,6 +1602,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param file       the output file
      * @param stylesheet the stylesheet to use
      * @return this operation
+     * @throws NullPointerException if {@code file} or {@code stylesheet} is {@code null}
      * @see #html(String)
      * @see #html(Path)
      * @see #html(File)
@@ -1597,6 +1648,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param includeFilter the filter file
      * @return this operation
+     * @throws IllegalArgumentException if {@code includeFilter} is {@code null} or empty
      * @see #include(File)
      * @see #include(Path)
      * @see #include()
@@ -1613,6 +1665,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param includeFilter the filter file
      * @return this operation
+     * @throws NullPointerException if {@code includeFilter} is {@code null}
      * @see #include(String)
      * @see #include(Path)
      * @see #include()
@@ -1629,6 +1682,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param includeFilter the filter file
      * @return this operation
+     * @throws NullPointerException if {@code includeFilter} is {@code null}
      * @see #include(File)
      * @see #include(String)
      * @see #include()
@@ -1655,7 +1709,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * Enable or disable line number in source file URIs.
      * <p>
      * While clicking on the URI works in IntelliJ IDEA, Visual Studio Code, etc.; it might not in terminal emulators.
-     * <p><
+     * <p>
      * Enabled by default.
      *
      * @param includeLineNumber {@code true} to enable, {@code false} otherwise
@@ -1682,6 +1736,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param args the args to pass to JVM
      * @return this operation
+     * @throws IllegalArgumentException if the {@code args} array or its elements are {@code null} or empty
      * @see #jvmArgs(Collection)
      * @see #jvmArgs()
      */
@@ -1696,6 +1751,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param args the args to pass to JVM
      * @return this operation
+     * @throws IllegalArgumentException if the {@code args} collection or its elements are {@code null} or empty
      * @see #jvmArgs(String...)
      * @see #jvmArgs()
      */
@@ -1767,6 +1823,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param size the maximum heap size in megabytes
      * @return this operation
+     * @throws IllegalArgumentException if {@code size} is not positive
      * @see #maxHeap()
      */
     public SpotBugsOperation maxHeap(int size) {
@@ -1790,6 +1847,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param maxRank the maximum rank
      * @return this operation
+     * @throws IllegalArgumentException if {@code maxRank} is not positive
      * @see #maxRank()
      */
     public SpotBugsOperation maxRank(int maxRank) {
@@ -1884,6 +1942,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param visitors the visitors to omit
      * @return this operation
+     * @throws IllegalArgumentException if the {@code visitors} array or its elements are {@code null} or empty
      * @see #omitVisitors(Collection)
      * @see #omitVisitors()
      */
@@ -1898,6 +1957,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param visitors the visitors to omit
      * @return this operation
+     * @throws IllegalArgumentException if the {@code visitors} collection or its elements are {@code null} or empty
      * @see #omitVisitors(String...)
      * @see #omitVisitors()
      */
@@ -1935,6 +1995,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param patterns the patterns to analyze
      * @return this operation
+     * @throws IllegalArgumentException if the {@code patterns} array or its elements are {@code null} or empty
      * @see #onlyAnalyze(Collection)
      * @see #onlyAnalyze()
      */
@@ -1945,11 +2006,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     /**
-     * Restrict analysis to find bugs to ist of classes and packages.
-     * <p>
-     * Unlike filtering, this option avoids running analysis on classes and packages that are not explicitly matched:
-     * for large projects, this may greatly reduce the amount of time needed to run the analysis.
-     * (However, some detectors may produce inaccurate results if they aren't run on the entire application.)
+     * Restrict analysis to find bugs to ist of classes and
      * <p>
      * Classes should be specified using their full classnames (including package).
      * <p>
@@ -1961,6 +2018,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param patterns the patterns to analyze
      * @return this operation
+     * @throws IllegalArgumentException if the {@code patterns} collection or its elements are {@code null} or empty
      * @see #onlyAnalyze(String...)
      * @see #onlyAnalyze()
      */
@@ -1988,6 +2046,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param file the file path
      * @return this operation
+     * @throws IllegalArgumentException if {@code file} is {@code null} or empty
      * @see #output(File)
      * @see #output(Path)
      * @see #output()
@@ -2005,6 +2064,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param file the file path
      * @return this operation
+     * @throws NullPointerException if {@code file} is {@code null}
      * @see #output(String)
      * @see #output(Path)
      * @see #output()
@@ -2022,6 +2082,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param filePath the file path
      * @return this operation
+     * @throws NullPointerException if {@code filePath} is {@code null}
      * @see #output(String)
      * @see #output(File)
      * @see #output()
@@ -2049,6 +2110,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param plugins the plugin list
      * @return this operation
+     * @throws IllegalArgumentException if the {@code plugins} array or its elements are {@code null} or empty
      * @see #pluginList(Collection)
      * @see #pluginList()
      */
@@ -2063,6 +2125,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param plugins the plugin list
      * @return this operation
+     * @throws IllegalArgumentException if the {@code plugins} collection or its elements are {@code null} or empty
      * @see #pluginList(String...)
      * @see #pluginList()
      */
@@ -2110,6 +2173,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param name the project name
      * @return this operation
+     * @throws IllegalArgumentException if {@code name} is {@code null} or empty
      * @see #projectName()
      */
     public SpotBugsOperation projectName(@NonNull String name) {
@@ -2168,6 +2232,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param release the release name
      * @return this operation
+     * @throws IllegalArgumentException if {@code release} is {@code null} or empty
      * @see #release()
      */
     public SpotBugsOperation release(@NonNull String release) {
@@ -2191,6 +2256,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param file the output file
      * @return this operation
+     * @throws NullPointerException if {@code file} is {@code null}
      * @see #sarif(String)
      * @see #sarif(Path)
      * @see #sarif()
@@ -2206,6 +2272,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param file the output file
      * @return this operation
+     * @throws IllegalArgumentException if {@code file} is {@code null} or empty
      * @see #sarif(File)
      * @see #sarif(Path)
      * @see #sarif()
@@ -2221,6 +2288,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param filePath the output file
      * @return this operation
+     * @throws NullPointerException if {@code filePath} is {@code null}
      * @see #sarif(String)
      * @see #sarif(File)
      * @see #sarif()
@@ -2270,6 +2338,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param sourceInfo the source info file
      * @return this operation
+     * @throws IllegalArgumentException if {@code sourceInfo} is {@code null} or empty
      * @see #sourceInfo(File)
      * @see #sourceInfo(Path)
      * @see #sourceInfo()
@@ -2285,6 +2354,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param sourceInfo the source info file
      * @return this operation
+     * @throws NullPointerException if {@code sourceInfo} is {@code null}
      * @see #sourceInfo(String)
      * @see #sourceInfo(Path)
      * @see #sourceInfo()
@@ -2300,6 +2370,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param sourceInfo the source info file
      * @return this operation
+     * @throws NullPointerException if {@code sourceInfo} is {@code null}
      * @see #sourceInfo(String)
      * @see #sourceInfo(File)
      * @see #sourceInfo()
@@ -2327,6 +2398,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param path the source path
      * @return this operation
+     * @throws IllegalArgumentException if the {@code path} array or its elements are {@code null} or empty
      * @see #sourcePath(Path...)
      * @see #sourcePath(File...)
      * @see #sourcePath(Collection)
@@ -2343,6 +2415,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param path the source path
      * @return this operation
+     * @throws IllegalArgumentException if the {@code path} array or its elements are {@code null} or empty
      * @see #sourcePath(String...)
      * @see #sourcePath(File...)
      * @see #sourcePath(Collection)
@@ -2359,6 +2432,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param path the source path
      * @return this operation
+     * @throws IllegalArgumentException if the {@code path} array or its elements are {@code null} or empty
      * @see #sourcePath(String...)
      * @see #sourcePath(Path...)
      * @see #sourcePath(Collection)
@@ -2388,6 +2462,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param path the source path
      * @return this operation
+     * @throws IllegalArgumentException if the {@code path} collection or its elements are {@code null} or empty
      * @see #sourcePath(String...)
      * @see #sourcePath(Path...)
      * @see #sourcePath(File...)
@@ -2404,6 +2479,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param path the source path
      * @return this operation
+     * @throws IllegalArgumentException if the {@code path} collection or its elements are {@code null} or empty
      * @see #sourcePath(String...)
      * @see #sourcePath(Path...)
      * @see #sourcePath(File...)
@@ -2420,6 +2496,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param path the source path
      * @return this operation
+     * @throws IllegalArgumentException if the {@code path} collection or its elements are {@code null} or empty
      * @see #sourcePath(String...)
      * @see #sourcePath(Path...)
      * @see #sourcePath(File...)
@@ -2448,6 +2525,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param jar the SpotBugs jar file
      * @return this operation
+     * @throws IllegalArgumentException if {@code jar} is {@code null} or empty
      * @see #spotBugsJar(File)
      * @see #spotBugsJar(Path)
      * @see #spotBugsJar()
@@ -2463,6 +2541,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param jarPath the SpotBugs jar file
      * @return this operation
+     * @throws NullPointerException if {@code jarPath} is {@code null}
      * @see #spotBugsJar(File)
      * @see #spotBugsJar(String)
      * @see #spotBugsJar()
@@ -2478,6 +2557,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param jar the SpotBugs jar file
      * @return this operation
+     * @throws NullPointerException if {@code jar} is {@code null}
      * @see #spotBugsJar(String)
      * @see #spotBugsJar(Path)
      * @see #spotBugsJar()
@@ -2511,10 +2591,65 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     /**
+     * User preferences file.
+     *
+     * @param file the preferences file
+     * @return this operation instance
+     * @throws IllegalArgumentException if the {@code file} is {@code null}
+     * @see #userPrefs(String)
+     * @see #userPrefs(Path)
+     */
+    public SpotBugsOperation userPrefs(@NonNull File file) {
+        Objects.requireNonNull(file, "userPrefs must not be null");
+        userPrefs_ = file;
+        return this;
+    }
+
+    /**
+     * User preferences file.
+     *
+     * @param file the preferences file
+     * @return this operation instance
+     * @throws IllegalArgumentException if the {@code file} is {@code null}
+     * @see #userPrefs(File)
+     * @see #userPrefs(String)
+     */
+    public SpotBugsOperation userPrefs(@NonNull Path file) {
+        Objects.requireNonNull(file, "userPrefs must not be null");
+        userPrefs_ = file.toFile();
+        return this;
+    }
+
+    /**
+     * User preferences file.
+     *
+     * @param file the preferences file
+     * @return this operation instance
+     * @throws IllegalArgumentException if the {@code file} is {@code null} or empty
+     * @see #userPrefs(File)
+     * @see #userPrefs(Path)
+     */
+    public SpotBugsOperation userPrefs(String file) {
+        ObjectTools.requireNotEmpty(file, "userPrefs must not be null");
+        userPrefs_ = new File(file);
+        return this;
+    }
+
+    /**
+     * Returns the user preferences file.
+     *
+     * @return the user preferences file
+     */
+    public File userPrefs() {
+        return userPrefs_;
+    }
+
+    /**
      * Run only named visitors.
      *
      * @param visitors the visitors to run
      * @return this operation
+     * @throws IllegalArgumentException if the {@code visitors} array or its elements are {@code null} or empty
      * @see #visitors(Collection)
      * @see #visitors()
      */
@@ -2529,6 +2664,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param visitors the visitors to run
      * @return this operation
+     * @throws IllegalArgumentException if the {@code visitors} collection or its elements are {@code null} or empty
      * @see #visitors(String...)
      * @see #visitors()
      */
@@ -2599,7 +2735,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
         return Optional.empty();
     }
-
 
     private String formatLineNumber(int startLine) {
         if (startLine > 0) {

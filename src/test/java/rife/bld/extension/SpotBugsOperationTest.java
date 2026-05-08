@@ -350,7 +350,7 @@ class SpotBugsOperationTest {
         @DisplayName("Execute Example Tests")
         class ExecuteExampleTests {
 
-            SpotBugsOperation op = new SpotBugsOperation()
+            final SpotBugsOperation op = new SpotBugsOperation()
                     .fromProject(
                             new BaseProjectBlueprint(
                                     new File("example"),

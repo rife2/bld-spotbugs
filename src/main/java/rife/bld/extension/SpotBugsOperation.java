@@ -397,6 +397,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 cmd.add(String.join(":", pluginList_));
             }
 
+            // userPrefs
+            if (userPrefs_ != null) {
+                cmd.add(SpotBugsFlag.USER_PREFS.flag());
+                cmd.add(userPrefs_.getAbsolutePath());
+            }
+
             // output
             cmd.add(SpotBugsFlag.XML_WITH_MESSAGES.flag() + "=" + output_.getAbsolutePath());
 

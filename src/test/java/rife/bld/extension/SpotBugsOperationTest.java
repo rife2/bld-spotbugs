@@ -421,6 +421,7 @@ class SpotBugsOperationTest {
                 SpotBugsFlag.SOURCE_INFO,
                 SpotBugsFlag.SOURCE_PATH,
                 SpotBugsFlag.TIMESTAMP_NOW,
+                SpotBugsFlag.USER_PREFS,
                 SpotBugsFlag.VISITORS,
                 SpotBugsFlag.WORK_HARD,
                 SpotBugsFlag.XML_WITH_MESSAGES
@@ -500,7 +501,8 @@ class SpotBugsOperationTest {
                     .bugReporters("Default")
                     .pluginList(dummyPath)
                     .auxClasspath(dummyPath)
-                    .sourcePath(temp.resolve("src").toAbsolutePath().toString());
+                    .sourcePath(temp.resolve("src").toAbsolutePath().toString())
+                    .userPrefs("foo");
 
             var cmd = op.executeConstructProcessCommandList();
 
@@ -513,6 +515,8 @@ class SpotBugsOperationTest {
             var implementedBases = IMPLEMENTED.stream()
                     .map(f -> f.flag().split("[:=]")[0])
                     .collect(Collectors.toSet());
+
+            System.out.println(implementedBases);
 
             for (var e : emitted) {
                 assertTrue(implementedBases.contains(e),
@@ -1932,6 +1936,39 @@ class SpotBugsOperationTest {
             commandList = op.executeConstructProcessCommandList();
             assertFalse(commandList.contains("-timestampNow"),
                     "-timestampNow should not be present in command list: " + commandList);
+        }
+
+        @Test
+        void userPrefs() {
+            var foo = new File("foo");
+            var op = newBaseOperation().userPrefs("foo");
+            var commandList = op.executeConstructProcessCommandList();
+            assertTrue(commandList.contains("-userPrefs"),
+                    "-userPrefs is not present in command lis: " + commandList);
+            assertTrue(commandList.contains(foo.getAbsolutePath()),
+                    "foo is not present in command list: " + commandList);
+        }
+
+        @Test
+        void userPrefsAsFile() {
+            var foo = new File("foo");
+            var op = newBaseOperation().userPrefs(foo);
+            var commandList = op.executeConstructProcessCommandList();
+            assertTrue(commandList.contains("-userPrefs"),
+                    "-userPrefs is not present in command lis: " + commandList);
+            assertTrue(commandList.contains(foo.getAbsolutePath()),
+                    "foo is not present in command list: " + commandList);
+        }
+
+        @Test
+        void userPrefsAsPath() {
+            var foo = Path.of("foo");
+            var op = newBaseOperation().userPrefs(foo);
+            var commandList = op.executeConstructProcessCommandList();
+            assertTrue(commandList.contains("-userPrefs"),
+                    "-userPrefs is not present in command lis: " + commandList);
+            assertTrue(commandList.contains(foo.toAbsolutePath().toString()),
+                    "foo is not present in command list: " + commandList);
         }
 
         @Test

@@ -216,7 +216,7 @@ public enum SpotBugsFlag {
      */
     TRAIN("-train"),
     /**
-     * User preferences file, e.g. Eclipse {@code.prefs}
+     * User preferences file
      */
     USER_PREFS("-userPrefs"),
     /**

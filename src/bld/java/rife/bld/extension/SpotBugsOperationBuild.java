@@ -47,7 +47,7 @@ public class SpotBugsOperationBuild extends Project {
         var junit = version(6, 0, 3);
         scope(compile)
                 .include(dependency("com.uwyn.rife2", "bld-extensions-tools",
-                        version(1, 2, 0)))
+                        version(1, 3, 0, "SNAPSHOT")))
                 .include(dependency("com.fasterxml.jackson.core", "jackson-databind",
                         version(2, 21, 3)))
                 .include(dependency("com.uwyn.rife2", "bld",
@@ -114,9 +114,9 @@ public class SpotBugsOperationBuild extends Project {
     @BuildCommand(summary = "Runs PMD analysis")
     public void pmd() throws Exception {
         new PmdOperation()
-                .fromProject(this)
                 .failOnViolation(true)
                 .excludesFiles(srcTestResourcesDirectory())
+                .fromProject(this)
                 .ruleSets("config/pmd.xml")
                 .execute();
     }

@@ -47,11 +47,12 @@ import java.util.logging.Logger;
         value = "EI_EXPOSE_REP",
         justification = "Builder pattern intentionally exposes mutable collections"
 )
+@SuppressWarnings("PMD.GuardLogStatement")
 public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperation> {
 
-    private static final String ANALYZE_NOT_VALID = "analyze values must not be null or empty";
+    private static final String ANALYZE = "analyze";
     private static final String INVALID_SPOTBUGS_LOCATION = "Please specify a valid SpotBugs (JAR or home) location.";
-    private static final String SOURCE_PATH_NOT_VALID = "sourcePath values must not be null or empty";
+    private static final String SOURCE_PATH = "sourcePath";
     private static final String SPOTBUGS_SARIF = "spotbugs.sarif";
     private static final String SPOTBUGS_XML = "spotbugs.xml";
     private static final Logger logger = Logger.getLogger(SpotBugsOperation.class.getName());
@@ -121,6 +122,11 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     public void execute() throws IOException, InterruptedException, ExitStatusException {
         super.execute();
 
+        if (output_ == null || !output_.exists()) {
+            throw new IOException("SpotBugs output file not found: " +
+                    (output_ == null ? "(null)" : output_.getAbsolutePath()));
+        }
+
         var spotBugs = SpotBugsXmlParser.parse(output_.toPath());
 
         Map<String, String> bugMap = Collections.emptyMap();
@@ -148,7 +154,6 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @throws UncheckedIOException     if temporary files cannot be created or written
      */
     @Override
-    @SuppressFBWarnings({"EXS_EXCEPTION_SOFTENING_NO_CHECKED"})
     protected List<String> executeConstructProcessCommandList() {
         var loggableInfo = logger.isLoggable(Level.INFO) && !silent();
         var loggableFine = logger.isLoggable(Level.FINE) && !silent();
@@ -159,7 +164,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         if (jar.isEmpty()) {
             throw new IllegalArgumentException(INVALID_SPOTBUGS_LOCATION);
         } else {
-            // Apply defaults if nothing set yet
+            // Resolve defaults once and write back to fields so execute() sees consistent values.
+            // This is the single authoritative place defaults are applied; fromProject() may have
+            // already set these, in which case the ternaries are no-ops.
             if (output_ == null) {
                 output_ = new File(SPOTBUGS_XML);
             }
@@ -167,9 +174,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 sarif_ = new File(SPOTBUGS_SARIF);
             }
 
-            var parentFile = output_.getParentFile();
-            if (!IOTools.mkdirs(parentFile)) {
-                throw new IllegalStateException("Could not create output directory: " + parentFile);
+            var outputDir = output_.getParentFile();
+            if (!IOTools.mkdirs(outputDir)) {
+                throw new IllegalStateException("Could not create output directory: " + outputDir);
             }
 
             // Java
@@ -305,10 +312,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 }
             }
 
-            // sarif
-            if (sarif_ != null) {
-                cmd.add(SpotBugsFlag.SARIF.flag() + "=" + sarif_.getAbsolutePath());
-            }
+            // sarif — always emitted because we always default sarif_ above; the field is now never null here
+            cmd.add(SpotBugsFlag.SARIF.flag() + "=" + sarif_.getAbsolutePath());
 
             // emacs
             if (emacs_ != null) {
@@ -391,10 +396,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
                 cmd.add(String.join(",", bugReporters_));
             }
 
-            // pluginList
+            // pluginList — SpotBugs docs specify ";" as the separator between plugins
             if (!pluginList_.isEmpty()) {
                 cmd.add(SpotBugsFlag.PLUGIN_LIST.flag());
-                cmd.add(String.join(":", pluginList_));
+                cmd.add(String.join(";", pluginList_));
             }
 
             // userPrefs
@@ -408,17 +413,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
             // auxClassPathFromFile
             if (!auxClasspath_.isEmpty()) {
-                File auxFile;
-                try {
-                    auxFile = createTempFile("aux");
-                } catch (IOException e) {
-                    throw new UncheckedIOException("Could not create auxiliary classpath file", e);
-                }
-                try {
-                    writeLinesToFile(auxClasspath_, auxFile);
-                } catch (IOException e) {
-                    throw new UncheckedIOException("Could not write auxiliary classpath file", e);
-                }
+                File auxFile = createAuxClasspathFile(auxClasspath_);
                 cmd.add(SpotBugsFlag.AUX_CLASSPATH_FROM_FILE.flag());
                 cmd.add(auxFile.getAbsolutePath());
 
@@ -441,24 +436,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
             // analyzeFromFile
             if (!analyze_.isEmpty()) {
-                File analyzeFile;
-                try {
-                    analyzeFile = createTempFile("analyzeFile");
-                } catch (IOException e) {
-                    throw new UncheckedIOException("Could not create analyze file", e);
-                }
-                var analyzeList = analyze_.stream().map(File::getAbsolutePath).toList();
-                try {
-                    writeLinesToFile(analyzeList, analyzeFile);
-                } catch (IOException e) {
-                    throw new UncheckedIOException("Could not write analyze file", e);
-                }
+                File analyzeFile = createAnalyzeFile(analyze_);
                 cmd.add(SpotBugsFlag.ANALYZE_FROM_FILE.flag());
                 cmd.add(analyzeFile.getAbsolutePath());
 
                 if (loggableInfo) {
+                    var analyzeList = analyze_.stream().map(File::getAbsolutePath).toList();
                     var relativePaths = analyzeList.stream().map(this::projectRelativePath).toList();
-                    logger.info(logFormat("analyze" + relativePaths));
+                    logger.info(logFormat(ANALYZE + relativePaths));
                 }
             }
         }
@@ -515,7 +500,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     @Override
     public SpotBugsOperation fromProject(@NonNull BaseProject project) {
-        Objects.requireNonNull(project, "project must not be null");
+        ObjectTools.requireNonNull(project, "fromProject");
 
         if (workDirectory_ == null) {
             workDirectory_ = project.workDirectory();
@@ -537,7 +522,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             sourcePath_.add(project.srcMainJavaDirectory().getAbsolutePath());
         }
         if (auxClasspath_.isEmpty()) {
-            auxClasspath_.addAll(project.compileMainClasspath());
+            var mainClasspath = project.compileMainClasspath();
+            if (mainClasspath.isEmpty() && logger.isLoggable(Level.FINE)) {
+                logger.fine(logFormat(
+                        "compileMainClasspath() is empty — dependency classes will not be available during analysis"));
+            }
+            auxClasspath_.addAll(mainClasspath);
         }
 
         if (projectName_ == null) {
@@ -611,12 +601,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param name     the detector or bug pattern name
      * @param priority the priority level to adjust
      * @return this operation
-     * @throws IllegalArgumentException if the {@code name} is {@code null} or empty
+     * @throws NullPointerException     if {@code name} is {@code null}
+     * @throws IllegalArgumentException if {@code name} is empty
      * @see #adjustPriority(String, Priority)
      * @see #adjustPriorities()
      */
     public SpotBugsOperation adjustPriority(@NonNull String name, int priority) {
-        ObjectTools.requireNotEmpty(name, "adjust priority name must not be null or empty");
+        ObjectTools.requireNotEmpty(name, "adjustPriority");
         adjustPriority_.add(name + "=" + priority);
         return this;
     }
@@ -628,14 +619,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param name     the detector or bug pattern name
      * @param priority the priority level to adjust
      * @return this operation
-     * @throws IllegalArgumentException if the {@code name} is {@code null} or empty
-     * @throws NullPointerException     if the {@code priority} is {@code null}
+     * @throws IllegalArgumentException if {@code name} is empty
+     * @throws NullPointerException     if {@code priority} or {@code name} is {@code null}
      * @see #adjustPriority(String, int)
      * @see #adjustPriorities()
      */
     public SpotBugsOperation adjustPriority(@NonNull String name, @NonNull Priority priority) {
-        ObjectTools.requireNotEmpty(name, "adjust priority name must not be null or empty");
-        Objects.requireNonNull(priority, "adjust priority must not be null");
+        ObjectTools.requireNotEmpty(name, "adjustPriority name");
+        ObjectTools.requireNonNull(priority, "adjustPriority priority");
         adjustPriority_.add(name + "=" + priority.name().toLowerCase());
         return this;
     }
@@ -643,17 +634,18 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     /**
      * Specifies files to analyze for bugs.
      *
-     * @param files array of file paths to analyze
+     * @param filePaths array of file paths to analyze
      * @return this operation
-     * @throws IllegalArgumentException if the {@code files} array or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code filePaths} is {@code null}
+     * @throws IllegalArgumentException if {@code filePaths} elements are {@code null} or empty
      * @see #analyze(File...)
      * @see #analyze(Path...)
      * @see #analyze(Collection)
      * @see #analyzeStrings(Collection)
      */
-    public SpotBugsOperation analyze(@NonNull String... files) {
-        ObjectTools.requireAllNotEmpty(files, ANALYZE_NOT_VALID);
-        analyze_.addAll(CollectionTools.combineStringsToFiles(files));
+    public SpotBugsOperation analyze(@NonNull String... filePaths) {
+        ObjectTools.requireNotEmpty(filePaths, ANALYZE);
+        analyze_.addAll(CollectionTools.combineStringsToFiles(filePaths));
         return this;
     }
 
@@ -662,13 +654,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param files array of files to analyze
      * @return this operation
-     * @throws IllegalArgumentException if the {@code files} array or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code files} is {@code null}
+     * @throws IllegalArgumentException if {@code files} elements are {@code null} or empty
      * @see #analyze(String...)
      * @see #analyze(Path...)
      * @see #analyze(Collection)
      */
     public SpotBugsOperation analyze(@NonNull File... files) {
-        ObjectTools.requireAllNotEmpty(files, ANALYZE_NOT_VALID);
+        ObjectTools.requireNotEmpty(files, ANALYZE);
         analyze_.addAll(CollectionTools.combine(files));
         return this;
     }
@@ -676,17 +669,18 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     /**
      * Specifies files to analyze for bugs.
      *
-     * @param files array of files to analyze
+     * @param paths array of file paths to analyze
      * @return this operation
-     * @throws IllegalArgumentException if the {@code files} array or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code paths} is {@code null}
+     * @throws IllegalArgumentException if {@code paths} elements are {@code null} or empty
      * @see #analyze(String...)
      * @see #analyze(File...)
      * @see #analyze(Collection)
      * @see #analyzePaths(Collection)
      */
-    public SpotBugsOperation analyze(@NonNull Path... files) {
-        ObjectTools.requireAllNotEmpty(files, ANALYZE_NOT_VALID);
-        analyze_.addAll(CollectionTools.combinePathsToFiles(files));
+    public SpotBugsOperation analyze(@NonNull Path... paths) {
+        ObjectTools.requireNotEmpty(paths, ANALYZE);
+        analyze_.addAll(CollectionTools.combinePathsToFiles(paths));
         return this;
     }
 
@@ -708,44 +702,47 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param files collection of files to analyze
      * @return this operation
-     * @throws IllegalArgumentException if the {@code files} collection or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code files} is {@code null}
+     * @throws IllegalArgumentException if {@code files} elements are {@code null} or empty
      * @see #analyze(String...)
      * @see #analyze(File...)
      * @see #analyze(Path...)
      */
     public SpotBugsOperation analyze(@NonNull Collection<File> files) {
-        ObjectTools.requireAllNotEmpty(files, ANALYZE_NOT_VALID);
+        ObjectTools.requireNotEmpty(files, ANALYZE);
         analyze_.addAll(files);
         return this;
     }
 
     /**
-     * Specifies files to analyze for bugs.
+     * Specifies paths to analyze for bugs.
      *
-     * @param files collection of files to analyze
+     * @param paths collection of paths to analyze
      * @return this operation
-     * @throws IllegalArgumentException if the {@code files} collection or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code paths} is {@code null}
+     * @throws IllegalArgumentException if {@code paths} elements are {@code null} or empty
      * @see #analyze(Path...)
      * @see #analyze(Collection)
      */
-    public SpotBugsOperation analyzePaths(@NonNull Collection<Path> files) {
-        ObjectTools.requireAllNotEmpty(files, ANALYZE_NOT_VALID);
-        analyze_.addAll(CollectionTools.combinePathsToFiles(files));
+    public SpotBugsOperation analyzePaths(@NonNull Collection<Path> paths) {
+        ObjectTools.requireNotEmpty(paths, "analyzePaths");
+        analyze_.addAll(CollectionTools.combinePathsToFiles(paths));
         return this;
     }
 
     /**
      * Specifies files to analyze for bugs.
      *
-     * @param files collection of files to analyze
+     * @param filePaths collection of file paths to analyze
      * @return this operation
-     * @throws IllegalArgumentException if the {@code files} collection or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code filePaths} is {@code null}
+     * @throws IllegalArgumentException if {@code filePaths} elements are {@code null} or empty
      * @see #analyze(String...)
      * @see #analyze(Collection)
      */
-    public SpotBugsOperation analyzeStrings(@NonNull Collection<String> files) {
-        ObjectTools.requireAllNotEmpty(files, ANALYZE_NOT_VALID);
-        analyze_.addAll(CollectionTools.combineStringsToFiles(files));
+    public SpotBugsOperation analyzeStrings(@NonNull Collection<String> filePaths) {
+        ObjectTools.requireNotEmpty(filePaths, "analyzeStrings");
+        analyze_.addAll(CollectionTools.combineStringsToFiles(filePaths));
         return this;
     }
 
@@ -777,15 +774,16 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * This classpath should include all jar files and directories containing classes that are part of the program
      * being analyzed, but you do not want to have analyzed for bugs.
      *
-     * @param paths the auxiliary paths to set
+     * @param filePaths the auxiliary file paths to set
      * @return this operation
-     * @throws IllegalArgumentException if the {@code paths} array or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code filePaths} is null
+     * @throws IllegalArgumentException if {@code filePaths} elements are {@code null} or empty
      * @see #auxClasspath(Collection)
      * @see #auxClasspath()
      */
-    public SpotBugsOperation auxClasspath(@NonNull String... paths) {
-        ObjectTools.requireAllNotEmpty(paths, "auxClasspath values must not be null or empty");
-        auxClasspath_.addAll(CollectionTools.combine(paths));
+    public SpotBugsOperation auxClasspath(@NonNull String... filePaths) {
+        ObjectTools.requireNotEmpty(filePaths, "auxClasspath");
+        auxClasspath_.addAll(CollectionTools.combine(filePaths));
         return this;
     }
 
@@ -795,15 +793,16 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * This classpath should include all jar files and directories containing classes that are part of the program
      * being analyzed, but you do not want to have analyzed for bugs.
      *
-     * @param paths the auxiliary paths to set
+     * @param filePaths the auxiliary paths to set
      * @return this operation
-     * @throws IllegalArgumentException if the {@code paths} collection or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code filePaths} is null
+     * @throws IllegalArgumentException if {@code filePaths} elements are {@code null} or empty
      * @see #auxClasspath(String...)
      * @see #auxClasspath()
      */
-    public SpotBugsOperation auxClasspath(@NonNull Collection<String> paths) {
-        ObjectTools.requireAllNotEmpty(paths, "auxClasspath values must not be null or empty");
-        auxClasspath_.addAll(paths);
+    public SpotBugsOperation auxClasspath(@NonNull Collection<String> filePaths) {
+        ObjectTools.requireNotEmpty(filePaths, "auxClasspath");
+        auxClasspath_.addAll(filePaths);
         return this;
     }
 
@@ -823,12 +822,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param categories the bug categories
      * @return this operation
-     * @throws IllegalArgumentException if the {@code categories} array or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code paths} is null
+     * @throws IllegalArgumentException if {@code paths} elements are {@code null} or empty
      * @see #bugCategories(Collection)
      * @see #bugCategories()
      */
     public SpotBugsOperation bugCategories(@NonNull String... categories) {
-        ObjectTools.requireAllNotEmpty(categories, "bugCategories values must not be null or empty");
+        ObjectTools.requireNotEmpty(categories, "bugCategories");
         bugCategories_.addAll(CollectionTools.combine(categories));
         return this;
     }
@@ -838,12 +838,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param categories the bug categories
      * @return this operation
-     * @throws IllegalArgumentException if the {@code categories} collection or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code categories} is null
+     * @throws IllegalArgumentException if {@code categories} elements are {@code null} or empty
      * @see #bugCategories(String...)
      * @see #bugCategories()
      */
     public SpotBugsOperation bugCategories(@NonNull Collection<String> categories) {
-        ObjectTools.requireAllNotEmpty(categories, "bugCategories values must not be null or empty");
+        ObjectTools.requireNotEmpty(categories, "bugCategories");
         bugCategories_.addAll(categories);
         return this;
     }
@@ -866,12 +867,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param reporters the reporters to enable/disable
      * @return this operation
-     * @throws IllegalArgumentException if the {@code reporters} array or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code reporters} is null
+     * @throws IllegalArgumentException if {@code reporters} elements are {@code null} or empty
      * @see #bugReporters(Collection)
      * @see #bugReporters()
      */
     public SpotBugsOperation bugReporters(@NonNull String... reporters) {
-        ObjectTools.requireAllNotEmpty(reporters, "bugReporters values must not be null or empty");
+        ObjectTools.requireNotEmpty(reporters, "bugReporters");
         bugReporters_.addAll(CollectionTools.combine(reporters));
         return this;
     }
@@ -883,12 +885,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param reporters the reporters to enable/disable
      * @return this operation
-     * @throws IllegalArgumentException if the {@code reporters} collection or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code reporters} is null
+     * @throws IllegalArgumentException if {@code reporters} elements are {@code null} or empty
      * @see #bugReporters(String...)
      * @see #bugReporters()
      */
     public SpotBugsOperation bugReporters(@NonNull Collection<String> reporters) {
-        ObjectTools.requireAllNotEmpty(reporters, "bugReporters values must not be null or empty");
+        ObjectTools.requireNotEmpty(reporters, "bugReporters");
         bugReporters_.addAll(reporters);
         return this;
     }
@@ -911,12 +914,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param plugins the plugins to enable/disable
      * @return this operation
-     * @throws IllegalArgumentException if the {@code plugins} array or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code plugins} is null
+     * @throws IllegalArgumentException if {@code plugins} elements are {@code null} or empty
      * @see #choosePlugins(Collection)
      * @see #choosePlugins()
      */
     public SpotBugsOperation choosePlugins(@NonNull String... plugins) {
-        ObjectTools.requireAllNotEmpty(plugins, "choosePlugins values must not be null or empty");
+        ObjectTools.requireNotEmpty(plugins, "choosePlugins");
         choosePlugins_.addAll(CollectionTools.combine(plugins));
         return this;
     }
@@ -928,12 +932,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param plugins the plugins to enable/disable
      * @return this operation
-     * @throws IllegalArgumentException if the {@code plugins} collection or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code plugins} is null
+     * @throws IllegalArgumentException if {@code plugins} elements are {@code null} or empty
      * @see #choosePlugins(String...)
      * @see #choosePlugins()
      */
     public SpotBugsOperation choosePlugins(@NonNull Collection<String> plugins) {
-        ObjectTools.requireAllNotEmpty(plugins, "choosePlugins values must not be null or empty");
+        ObjectTools.requireNotEmpty(plugins, "choosePlugins");
         choosePlugins_.addAll(plugins);
         return this;
     }
@@ -956,12 +961,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param visitors the visitors to enable/disable
      * @return this operation
-     * @throws IllegalArgumentException if the {@code visitors} array or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code visitors} is null
+     * @throws IllegalArgumentException if {@code visitors} elements are {@code null} or empty
      * @see #chooseVisitors(Collection)
      * @see #chooseVisitors()
      */
     public SpotBugsOperation chooseVisitors(@NonNull String... visitors) {
-        ObjectTools.requireAllNotEmpty(visitors, "chooseVisitors values must not be null or empty");
+        ObjectTools.requireNotEmpty(visitors, "chooseVisitors");
         chooseVisitors_.addAll(CollectionTools.combine(visitors));
         return this;
     }
@@ -973,12 +979,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param visitors the visitors to enable/disable
      * @return this operation
-     * @throws IllegalArgumentException if the {@code visitors} collection or its elements are {@code null} or empty
+     * @throws NullPointerException     if {@code visitors} is null
+     * @throws IllegalArgumentException if {@code visitors} elements are {@code null} or empty
      * @see #chooseVisitors(String...)
      * @see #chooseVisitors()
      */
     public SpotBugsOperation chooseVisitors(@NonNull Collection<String> visitors) {
-        ObjectTools.requireAllNotEmpty(visitors, "chooseVisitors values must not be null or empty");
+        ObjectTools.requireNotEmpty(visitors, "chooseVisitors");
         chooseVisitors_.addAll(visitors);
         return this;
     }
@@ -1083,7 +1090,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #effort()
      */
     public SpotBugsOperation effort(@NonNull Effort effort) {
-        Objects.requireNonNull(effort, "effort must not be null");
+        ObjectTools.requireNonNull(effort, "effort");
         effort_ = effort;
         return this;
     }
@@ -1109,7 +1116,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #emacs()
      */
     public SpotBugsOperation emacs(@NonNull File file) {
-        Objects.requireNonNull(file, "emacs must not be null");
+        ObjectTools.requireNonNull(file, "emacs");
         emacs_ = file;
         return this;
     }
@@ -1125,7 +1132,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #emacs()
      */
     public SpotBugsOperation emacs(@NonNull Path file) {
-        Objects.requireNonNull(file, "emacs must not be null");
+        ObjectTools.requireNonNull(file, "emacs");
         emacs_ = file.toFile();
         return this;
     }
@@ -1133,16 +1140,17 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     /**
      * Produce the bug reports in Emacs format.
      *
-     * @param file the output file
+     * @param filePath the output file path
      * @return this operation
-     * @throws IllegalArgumentException if {@code file} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code filePath} is empty
+     * @throws NullPointerException     if {@code filePath} is {@code null}
      * @see #emacs(File)
      * @see #emacs(Path)
      * @see #emacs()
      */
-    public SpotBugsOperation emacs(@NonNull String file) {
-        ObjectTools.requireNotEmpty(file, "emacs must not be null or empty");
-        emacs_ = new File(file);
+    public SpotBugsOperation emacs(@NonNull String filePath) {
+        ObjectTools.requireNotEmpty(filePath, "emacs");
+        emacs_ = new File(filePath);
         return this;
     }
 
@@ -1170,7 +1178,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #exclude()
      */
     public SpotBugsOperation exclude(@NonNull File excludeFilter) {
-        Objects.requireNonNull(excludeFilter, "exclude must not be null");
+        ObjectTools.requireNonNull(excludeFilter, "exclude");
         exclude_ = excludeFilter;
         return this;
     }
@@ -1181,13 +1189,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param excludeFilter the filter file
      * @return this operation
-     * @throws IllegalArgumentException if {@code excludeFilter} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code excludeFilter} is empty
+     * @throws NullPointerException     if {@code excludeFilter} is {@code null}
      * @see #exclude(File)
      * @see #exclude(Path)
      * @see #exclude()
      */
     public SpotBugsOperation exclude(@NonNull String excludeFilter) {
-        ObjectTools.requireNotEmpty(excludeFilter, "exclude must not be null or empty");
+        ObjectTools.requireNotEmpty(excludeFilter, "exclude");
         exclude_ = new File(excludeFilter);
         return this;
     }
@@ -1204,7 +1213,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #exclude()
      */
     public SpotBugsOperation exclude(@NonNull Path excludeFilter) {
-        Objects.requireNonNull(excludeFilter, "exclude must not be null");
+        ObjectTools.requireNonNull(excludeFilter, "exclude");
         exclude_ = excludeFilter.toFile();
         return this;
     }
@@ -1226,13 +1235,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param excludeFile the exclude file
      * @return this operation
-     * @throws IllegalArgumentException if {@code excludeFile} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code excludeFile} is empty
+     * @throws NullPointerException     if {@code excludeFile} is {@code null}
      * @see #excludeBugs(File)
      * @see #excludeBugs(Path)
      * @see #excludeBugs()
      */
     public SpotBugsOperation excludeBugs(@NonNull String excludeFile) {
-        ObjectTools.requireNotEmpty(excludeFile, "excludeBugs must not be null or empty");
+        ObjectTools.requireNotEmpty(excludeFile, "excludeBugs");
         excludeBugs_ = new File(excludeFile);
         return this;
     }
@@ -1248,7 +1258,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #excludeBugs()
      */
     public SpotBugsOperation excludeBugs(@NonNull File excludeFile) {
-        Objects.requireNonNull(excludeFile, "excludeBugs must not be null");
+        ObjectTools.requireNonNull(excludeFile, "excludeBugs");
         excludeBugs_ = excludeFile;
         return this;
     }
@@ -1264,7 +1274,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #excludeBugs()
      */
     public SpotBugsOperation excludeBugs(@NonNull Path excludeFile) {
-        Objects.requireNonNull(excludeFile, "excludeBugs must not be null");
+        ObjectTools.requireNonNull(excludeFile, "excludeBugs");
         excludeBugs_ = excludeFile.toFile();
         return this;
     }
@@ -1322,7 +1332,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *     and {@link BaseProject#srcMainResourcesDirectory() srcMainResourceDirectory}</li>
      * </ul>
      * <p>
-     * If {@code includeTest} is enabled, the {@code test} directories are also included.
+     * If {@code includeTest} is enabled, {@code test} directories are also included.
      * </p>
      *
      * @param project     the project to configure the compile operation from
@@ -1371,13 +1381,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param home the home directory
      * @return this operation
-     * @throws IllegalArgumentException if {@code home} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code home} is empty
+     * @throws NullPointerException     if {@code home} is {@code null}
      * @see #home(File)
      * @see #home(Path)
      * @see #home()
      */
     public SpotBugsOperation home(@NonNull String home) {
-        ObjectTools.requireNotEmpty(home, "home must not be null or empty");
+        ObjectTools.requireNotEmpty(home, "home");
         home_ = Path.of(home);
         return this;
     }
@@ -1393,7 +1404,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #home()
      */
     public SpotBugsOperation home(@NonNull File home) {
-        Objects.requireNonNull(home, "home must not be null");
+        ObjectTools.requireNonNull(home, "home");
         home_ = home.toPath();
         return this;
     }
@@ -1409,7 +1420,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #home()
      */
     public SpotBugsOperation home(@NonNull Path home) {
-        Objects.requireNonNull(home, "home must not be null");
+        ObjectTools.requireNonNull(home, "home");
         home_ = home;
         return this;
     }
@@ -1440,7 +1451,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html()
      */
     public SpotBugsOperation html(@NonNull File file) {
-        Objects.requireNonNull(file, "html must not be null");
+        ObjectTools.requireNonNull(file, "html");
         html_ = file;
         return this;
     }
@@ -1448,9 +1459,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     /**
      * Generate HTML output.
      *
-     * @param filePath the output file
+     * @param path the output file
      * @return this operation
-     * @throws NullPointerException if {@code filePath} is {@code null}
+     * @throws NullPointerException if {@code path} is {@code null}
      * @see #html(String)
      * @see #html(File)
      * @see #html(String, String)
@@ -1458,18 +1469,19 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(Path, String)
      * @see #html()
      */
-    public SpotBugsOperation html(@NonNull Path filePath) {
-        Objects.requireNonNull(filePath, "html must not be null");
-        html_ = filePath.toFile();
+    public SpotBugsOperation html(@NonNull Path path) {
+        ObjectTools.requireNonNull(path, "html");
+        html_ = path.toFile();
         return this;
     }
 
     /**
      * Generate HTML output.
      *
-     * @param file the output file
+     * @param filePath the output file path
      * @return this operation
-     * @throws IllegalArgumentException if {@code file} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code filePath} is empty
+     * @throws NullPointerException     if {@code filePath} is {@code null}
      * @see #html(File)
      * @see #html(Path)
      * @see #html(String, String)
@@ -1477,9 +1489,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(Path, String)
      * @see #html()
      */
-    public SpotBugsOperation html(@NonNull String file) {
-        ObjectTools.requireNotEmpty(file, "html must not be null or empty");
-        html_ = new File(file);
+    public SpotBugsOperation html(@NonNull String filePath) {
+        ObjectTools.requireNotEmpty(filePath, "html");
+        html_ = new File(filePath);
         return this;
     }
 
@@ -1501,8 +1513,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     /**
      * Generate HTML output.
      * <p>
-     * By default, SpotBugs will use the default.xsl XSLT stylesheet to generate the HTML: you can find this file in
-     * spotbugs.jar, or in the SpotBugs source or binary distributions. Variants of this option include:
+     * By default, SpotBugs will use the default.xsl XSLT stylesheet to generate the HTML: you can find this file path
+     * in spotbugs.jar, or in the SpotBugs source or binary distributions. Variants of this option include:
      *
      * <ul>
      * <li>{@code plain.xsl}</li>
@@ -1510,21 +1522,22 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * <li>{@code fancy-hist.xsl}</li>
      * </ul>
      * <p>
-     * The {@code plain.xsl} stylesheet does not use JavaScript or DOM, and may work better with older web browsers,
+     * {@code plain.xsl} stylesheet does not use JavaScript or DOM, and may work better with older web browsers,
      * or for printing.
      * <p>
-     * The {@code fancy.xsl} stylesheet uses DOM and JavaScript for navigation and CSS for visual presentation.
+     * {@code fancy.xsl} stylesheet uses DOM and JavaScript for navigation and CSS for visual presentation.
      * <p>
-     * The {@code fancy-hist.xsl} an evolution of fancy.xsl stylesheet. It makes extensive use of DOM and JavaScript
+     * {@code fancy-hist.xsl} an evolution of fancy.xsl stylesheet. It makes extensive use of DOM and JavaScript
      * for dynamically filtering the lists of bugs.
      * <p>
      * If you want to specify your own XSLT stylesheet to perform the transformation to HTML, specify the option as
      * {@code myStylesheet.xsl}, the filename of the stylesheet you want to use.
      *
-     * @param file       the output file
+     * @param filePath   the output file path
      * @param stylesheet the stylesheet to use
      * @return this operation
-     * @throws IllegalArgumentException if {@code file} or {@code stylesheet} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code filePath} or {@code stylesheet} is empty
+     * @throws NullPointerException     if {@code filePath} or {@code stylesheet} is {@code null}
      * @see #html(String)
      * @see #html(Path)
      * @see #html(File)
@@ -1532,10 +1545,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(Path, String)
      * @see #html()
      */
-    public SpotBugsOperation html(@NonNull String file, @NonNull String stylesheet) {
-        ObjectTools.requireNotEmpty(file, "html file must not be null or empty");
-        ObjectTools.requireNotEmpty(stylesheet, "html stylesheet must not be null or empty");
-        html_ = new File(file);
+    public SpotBugsOperation html(@NonNull String filePath, @NonNull String stylesheet) {
+        ObjectTools.requireNotEmpty(filePath, "html filePath");
+        ObjectTools.requireNotEmpty(stylesheet, "html stylesheet");
+        html_ = new File(filePath);
         htmlXsl_ = stylesheet;
         return this;
     }
@@ -1552,12 +1565,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * <li>{@code fancy-hist.xsl}</li>
      * </ul>
      * <p>
-     * The {@code plain.xsl} stylesheet does not use JavaScript or DOM, and may work better with older web browsers,
+     * {@code plain.xsl} stylesheet does not use JavaScript or DOM, and may work better with older web browsers,
      * or for printing.
      * <p>
-     * The {@code fancy.xsl} stylesheet uses DOM and JavaScript for navigation and CSS for visual presentation.
+     * {@code fancy.xsl} stylesheet uses DOM and JavaScript for navigation and CSS for visual presentation.
      * <p>
-     * The {@code fancy-hist.xsl} an evolution of fancy.xsl stylesheet. It makes extensive use of DOM and JavaScript
+     * {@code fancy-hist.xsl} an evolution of fancy.xsl stylesheet. It makes extensive use of DOM and JavaScript
      * for dynamically filtering the lists of bugs.
      * <p>
      * If you want to specify your own XSLT stylesheet to perform the transformation to HTML, specify the option as
@@ -1566,7 +1579,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param filePath   the output file
      * @param stylesheet the stylesheet to use
      * @return this operation
-     * @throws NullPointerException if {@code filePath} or {@code stylesheet} is {@code null}
+     * @throws NullPointerException     if {@code filePath} or {@code stylesheet} is {@code null}
+     * @throws IllegalArgumentException if {@code filePath} or {@code stylesheet} is empty
      * @see #html(String)
      * @see #html(File)
      * @see #html(Path)
@@ -1575,8 +1589,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html()
      */
     public SpotBugsOperation html(@NonNull Path filePath, @NonNull String stylesheet) {
-        Objects.requireNonNull(filePath, "html file must not be null");
-        Objects.requireNonNull(stylesheet, "html stylesheet must not be null");
+        ObjectTools.requireNonNull(filePath, "html file");
+        ObjectTools.requireNotEmpty(stylesheet, "html stylesheet");
         html_ = filePath.toFile();
         htmlXsl_ = stylesheet;
         return this;
@@ -1594,12 +1608,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * <li>{@code fancy-hist.xsl}</li>
      * </ul>
      * <p>
-     * The {@code plain.xsl} stylesheet does not use JavaScript or DOM, and may work better with older web browsers,
+     * {@code plain.xsl} stylesheet does not use JavaScript or DOM, and may work better with older web browsers,
      * or for printing.
      * <p>
-     * The {@code fancy.xsl} stylesheet uses DOM and JavaScript for navigation and CSS for visual presentation.
+     * {@code fancy.xsl} stylesheet uses DOM and JavaScript for navigation and CSS for visual presentation.
      * <p>
-     * The {@code fancy-hist.xsl} an evolution of fancy.xsl stylesheet. It makes extensive use of DOM and JavaScript
+     * {@code fancy-hist.xsl} an evolution of fancy.xsl stylesheet. It makes extensive use of DOM and JavaScript
      * for dynamically filtering the lists of bugs.
      * <p>
      * If you want to specify your own XSLT stylesheet to perform the transformation to HTML, specify the option as
@@ -1608,7 +1622,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param file       the output file
      * @param stylesheet the stylesheet to use
      * @return this operation
-     * @throws NullPointerException if {@code file} or {@code stylesheet} is {@code null}
+     * @throws NullPointerException     if {@code filePath} or {@code stylesheet} is {@code null}
+     * @throws IllegalArgumentException if {@code stylesheet} is empty
      * @see #html(String)
      * @see #html(Path)
      * @see #html(File)
@@ -1617,8 +1632,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html()
      */
     public SpotBugsOperation html(@NonNull File file, @NonNull String stylesheet) {
-        Objects.requireNonNull(file, "html file must not be null");
-        Objects.requireNonNull(stylesheet, "html stylesheet must not be null");
+        ObjectTools.requireNonNull(file, "html file");
+        ObjectTools.requireNotEmpty(stylesheet, "html stylesheet");
         html_ = file;
         htmlXsl_ = stylesheet;
         return this;
@@ -1654,13 +1669,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param includeFilter the filter file
      * @return this operation
-     * @throws IllegalArgumentException if {@code includeFilter} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code includeFilter} is empty
+     * @throws NullPointerException     if {@code includeFilter} is {@code null}
      * @see #include(File)
      * @see #include(Path)
      * @see #include()
      */
     public SpotBugsOperation include(@NonNull String includeFilter) {
-        ObjectTools.requireNotEmpty(includeFilter, "include must not be null or empty");
+        ObjectTools.requireNotEmpty(includeFilter, "include");
         include_ = new File(includeFilter);
         return this;
     }
@@ -1677,7 +1693,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #include()
      */
     public SpotBugsOperation include(@NonNull File includeFilter) {
-        Objects.requireNonNull(includeFilter, "include must not be null");
+        ObjectTools.requireNonNull(includeFilter, "include");
         include_ = includeFilter;
         return this;
     }
@@ -1694,7 +1710,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #include()
      */
     public SpotBugsOperation include(@NonNull Path includeFilter) {
-        Objects.requireNonNull(includeFilter, "include must not be null");
+        ObjectTools.requireNonNull(includeFilter, "include");
         include_ = includeFilter.toFile();
         return this;
     }
@@ -1742,12 +1758,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param args the args to pass to JVM
      * @return this operation
-     * @throws IllegalArgumentException if the {@code args} array or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code args} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code args} is {@code null}
      * @see #jvmArgs(Collection)
      * @see #jvmArgs()
      */
     public SpotBugsOperation jvmArgs(@NonNull String... args) {
-        ObjectTools.requireAllNotEmpty(args, "jvmArgs values must not be null or empty");
+        ObjectTools.requireNotEmpty(args, "jvmArgs");
         jvmArgs_.addAll(CollectionTools.combine(args));
         return this;
     }
@@ -1757,12 +1774,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param args the args to pass to JVM
      * @return this operation
-     * @throws IllegalArgumentException if the {@code args} collection or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code args} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code args} is {@code null}
      * @see #jvmArgs(String...)
      * @see #jvmArgs()
      */
     public SpotBugsOperation jvmArgs(@NonNull Collection<String> args) {
-        ObjectTools.requireAllNotEmpty(args, "jvmArgs values must not be null or empty");
+        ObjectTools.requireNotEmpty(args, "jvmArgs");
         jvmArgs_.addAll(args);
         return this;
     }
@@ -1833,7 +1851,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #maxHeap()
      */
     public SpotBugsOperation maxHeap(int size) {
-        requirePositive(size, "maxHeap must be positive");
+        requirePositive(size, "maxHeap");
         maxHeap_ = size;
         return this;
     }
@@ -1851,14 +1869,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     /**
      * Only report issues with a bug rank at least as scary as that provided.
      *
-     * @param maxRank the maximum rank
+     * @param rank the maximum rank
      * @return this operation
-     * @throws IllegalArgumentException if {@code maxRank} is not positive
+     * @throws IllegalArgumentException if {@code rank} is not positive
      * @see #maxRank()
      */
-    public SpotBugsOperation maxRank(int maxRank) {
-        requirePositive(maxRank, "maxRank must be positive");
-        maxRank_ = maxRank;
+    public SpotBugsOperation maxRank(int rank) {
+        requirePositive(rank, "maxRank");
+        maxRank_ = rank;
         return this;
     }
 
@@ -1948,13 +1966,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param visitors the visitors to omit
      * @return this operation
-     * @throws IllegalArgumentException if the {@code visitors} array or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code visitors} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code visitors} is {@code null}
      * @see #omitVisitors(Collection)
      * @see #omitVisitors()
      */
     public SpotBugsOperation omitVisitors(@NonNull String... visitors) {
-        ObjectTools.requireAllNotEmpty(visitors, "omitVisitors values must not be null or empty");
-        omitVisitors_.addAll(List.of(visitors));
+        ObjectTools.requireNotEmpty(visitors, "omitVisitors");
+        omitVisitors_.addAll(CollectionTools.combine(visitors));
         return this;
     }
 
@@ -1963,12 +1982,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param visitors the visitors to omit
      * @return this operation
-     * @throws IllegalArgumentException if the {@code visitors} collection or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code visitors} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code visitors} is {@code null}
      * @see #omitVisitors(String...)
      * @see #omitVisitors()
      */
     public SpotBugsOperation omitVisitors(@NonNull Collection<String> visitors) {
-        ObjectTools.requireAllNotEmpty(visitors, "omitVisitors values must not be null or empty");
+        ObjectTools.requireNotEmpty(visitors, "omitVisitors");
         omitVisitors_.addAll(visitors);
         return this;
     }
@@ -1985,7 +2005,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     /**
-     * Restrict analysis to find bugs to ist of classes and packages.
+     * Restrict analysis to find bugs to a list of classes and packages.
      * <p>
      * Unlike filtering, this option avoids running analysis on classes and packages that are not explicitly matched:
      * for large projects, this may greatly reduce the amount of time needed to run the analysis.
@@ -2001,18 +2021,19 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param patterns the patterns to analyze
      * @return this operation
-     * @throws IllegalArgumentException if the {@code patterns} array or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code patterns} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code patterns} is {@code null}
      * @see #onlyAnalyze(Collection)
      * @see #onlyAnalyze()
      */
     public SpotBugsOperation onlyAnalyze(@NonNull String... patterns) {
-        ObjectTools.requireAllNotEmpty(patterns, "onlyAnalyze values must not be null or empty");
+        ObjectTools.requireNotEmpty(patterns, "onlyAnalyze");
         onlyAnalyze_.addAll(CollectionTools.combine(patterns));
         return this;
     }
 
     /**
-     * Restrict analysis to find bugs to ist of classes and
+     * Restrict analysis to find bugs to a list of classes and packages.
      * <p>
      * Classes should be specified using their full classnames (including package).
      * <p>
@@ -2024,13 +2045,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param patterns the patterns to analyze
      * @return this operation
-     * @throws IllegalArgumentException if the {@code patterns} collection or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code patterns} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code patterns} is {@code null}
      * @see #onlyAnalyze(String...)
      * @see #onlyAnalyze()
      */
     public SpotBugsOperation onlyAnalyze(@NonNull Collection<String> patterns) {
-        ObjectTools.requireAllNotEmpty(patterns, "onlyAnalyze values must not be null or empty");
-        onlyAnalyze_.addAll(CollectionTools.combine(patterns));
+        ObjectTools.requireNotEmpty(patterns, "onlyAnalyze");
+        onlyAnalyze_.addAll(patterns);
         return this;
     }
 
@@ -2050,16 +2072,17 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * <p>
      * The default is: {@code spotbugs.xml}
      *
-     * @param file the file path
+     * @param filePath the file path
      * @return this operation
-     * @throws IllegalArgumentException if {@code file} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code filePath} is empty
+     * @throws NullPointerException     if {@code filePath} is {@code null}
      * @see #output(File)
      * @see #output(Path)
      * @see #output()
      */
-    public SpotBugsOperation output(@NonNull String file) {
-        ObjectTools.requireNotEmpty(file, "output must not be null or empty");
-        output_ = new File(file);
+    public SpotBugsOperation output(@NonNull String filePath) {
+        ObjectTools.requireNotEmpty(filePath, "output");
+        output_ = new File(filePath);
         return this;
     }
 
@@ -2076,7 +2099,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #output()
      */
     public SpotBugsOperation output(@NonNull File file) {
-        Objects.requireNonNull(file, "output must not be null");
+        ObjectTools.requireNonNull(file, "output");
         output_ = file;
         return this;
     }
@@ -2086,16 +2109,16 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * <p>
      * The default is: {@code spotbugs.xml}
      *
-     * @param filePath the file path
+     * @param path the file path
      * @return this operation
-     * @throws NullPointerException if {@code filePath} is {@code null}
+     * @throws NullPointerException if {@code path} is {@code null}
      * @see #output(String)
      * @see #output(File)
      * @see #output()
      */
-    public SpotBugsOperation output(@NonNull Path filePath) {
-        Objects.requireNonNull(filePath, "output must not be null");
-        output_ = filePath.toFile();
+    public SpotBugsOperation output(@NonNull Path path) {
+        ObjectTools.requireNonNull(path, "output");
+        output_ = path.toFile();
         return this;
     }
 
@@ -2116,12 +2139,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param plugins the plugin list
      * @return this operation
-     * @throws IllegalArgumentException if the {@code plugins} array or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code plugins} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code plugins} is {@code null}
      * @see #pluginList(Collection)
      * @see #pluginList()
      */
     public SpotBugsOperation pluginList(@NonNull String... plugins) {
-        ObjectTools.requireAllNotEmpty(plugins, "pluginList values must not be null or empty");
+        ObjectTools.requireNotEmpty(plugins, "pluginList");
         pluginList_.addAll(CollectionTools.combine(plugins));
         return this;
     }
@@ -2131,12 +2155,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param plugins the plugin list
      * @return this operation
-     * @throws IllegalArgumentException if the {@code plugins} collection or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code plugins} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code plugins} is {@code null}
      * @see #pluginList(String...)
      * @see #pluginList()
      */
     public SpotBugsOperation pluginList(@NonNull Collection<String> plugins) {
-        ObjectTools.requireAllNotEmpty(plugins, "pluginList values must not be null or empty");
+        ObjectTools.requireNotEmpty(plugins, "pluginList");
         pluginList_.addAll(CollectionTools.combine(plugins));
         return this;
     }
@@ -2179,11 +2204,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param name the project name
      * @return this operation
-     * @throws IllegalArgumentException if {@code name} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code name} is empty
+     * @throws NullPointerException     if {@code name} is {@code null}
      * @see #projectName()
      */
     public SpotBugsOperation projectName(@NonNull String name) {
-        ObjectTools.requireNotEmpty(name, "projectName must not be null or empty");
+        ObjectTools.requireNotEmpty(name, "projectName");
         projectName_ = name;
         return this;
     }
@@ -2203,10 +2229,21 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param quiet set to {@code true} to suppress error messages, {@code false} otherwise
      * @return this operation
+     * @see #quiet()
      */
     public SpotBugsOperation quiet(boolean quiet) {
         quiet_ = quiet;
         return this;
+    }
+
+    /**
+     * Returns whether error messages are suppressed.
+     *
+     * @return {@code true} if error messages are suppressed, {@code false} otherwise
+     * @see #quiet(boolean)
+     */
+    public boolean quiet() {
+        return quiet_;
     }
 
     /**
@@ -2238,11 +2275,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param release the release name
      * @return this operation
-     * @throws IllegalArgumentException if {@code release} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code release} is empty
+     * @throws NullPointerException     if {@code release} is {@code null}
      * @see #release()
      */
     public SpotBugsOperation release(@NonNull String release) {
-        ObjectTools.requireNotEmpty(release, "release must not be null or empty");
+        ObjectTools.requireNotEmpty(release, "release");
         release_ = release;
         return this;
     }
@@ -2268,7 +2306,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sarif()
      */
     public SpotBugsOperation sarif(@NonNull File file) {
-        Objects.requireNonNull(file, "sarif must not be null");
+        ObjectTools.requireNonNull(file, "sarif");
         sarif_ = file;
         return this;
     }
@@ -2276,32 +2314,33 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     /**
      * Produce the bug reports in SARIF 2.1.0.
      *
-     * @param file the output file
+     * @param filePath the output file path
      * @return this operation
-     * @throws IllegalArgumentException if {@code file} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code filePath} is empty
+     * @throws NullPointerException     if {@code filePath} is {@code null}
      * @see #sarif(File)
      * @see #sarif(Path)
      * @see #sarif()
      */
-    public SpotBugsOperation sarif(@NonNull String file) {
-        ObjectTools.requireNotEmpty(file, "sarif must not be null or empty");
-        sarif_ = new File(file);
+    public SpotBugsOperation sarif(@NonNull String filePath) {
+        ObjectTools.requireNotEmpty(filePath, "sarif");
+        sarif_ = new File(filePath);
         return this;
     }
 
     /**
      * Produce the bug reports in SARIF 2.1.0.
      *
-     * @param filePath the output file
+     * @param path the output file
      * @return this operation
-     * @throws NullPointerException if {@code filePath} is {@code null}
+     * @throws NullPointerException if {@code path} is {@code null}
      * @see #sarif(String)
      * @see #sarif(File)
      * @see #sarif()
      */
-    public SpotBugsOperation sarif(@NonNull Path filePath) {
-        Objects.requireNonNull(filePath, "sarif must not be null");
-        sarif_ = filePath.toFile();
+    public SpotBugsOperation sarif(@NonNull Path path) {
+        ObjectTools.requireNonNull(path, "sarif");
+        sarif_ = path.toFile();
         return this;
     }
 
@@ -2344,13 +2383,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param sourceInfo the source info file
      * @return this operation
-     * @throws IllegalArgumentException if {@code sourceInfo} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code sourceInfo} is empty
+     * @throws NullPointerException     if {@code sourceInfo} is {@code null}
      * @see #sourceInfo(File)
      * @see #sourceInfo(Path)
      * @see #sourceInfo()
      */
     public SpotBugsOperation sourceInfo(@NonNull String sourceInfo) {
-        ObjectTools.requireNotEmpty(sourceInfo, "sourceInfo must not be null or empty");
+        ObjectTools.requireNotEmpty(sourceInfo, "sourceInfo");
         sourceInfo_ = new File(sourceInfo);
         return this;
     }
@@ -2358,32 +2398,32 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     /**
      * Specify the source info file (line numbers for fields/classes).
      *
-     * @param sourceInfo the source info file
+     * @param file the source info file
      * @return this operation
-     * @throws NullPointerException if {@code sourceInfo} is {@code null}
+     * @throws NullPointerException if {@code file} is {@code null}
      * @see #sourceInfo(String)
      * @see #sourceInfo(Path)
      * @see #sourceInfo()
      */
-    public SpotBugsOperation sourceInfo(@NonNull File sourceInfo) {
-        Objects.requireNonNull(sourceInfo, "sourceInfo must not be null");
-        sourceInfo_ = sourceInfo;
+    public SpotBugsOperation sourceInfo(@NonNull File file) {
+        ObjectTools.requireNonNull(file, "sourceInfo");
+        sourceInfo_ = file;
         return this;
     }
 
     /**
      * Specify the source info file (line numbers for fields/classes).
      *
-     * @param sourceInfo the source info file
+     * @param path the source info file
      * @return this operation
-     * @throws NullPointerException if {@code sourceInfo} is {@code null}
+     * @throws NullPointerException if {@code path} is {@code null}
      * @see #sourceInfo(String)
      * @see #sourceInfo(File)
      * @see #sourceInfo()
      */
-    public SpotBugsOperation sourceInfo(@NonNull Path sourceInfo) {
-        Objects.requireNonNull(sourceInfo, "sourceInfo must not be null");
-        sourceInfo_ = sourceInfo.toFile();
+    public SpotBugsOperation sourceInfo(@NonNull Path path) {
+        ObjectTools.requireNonNull(path, "sourceInfo");
+        sourceInfo_ = path.toFile();
         return this;
     }
 
@@ -2400,53 +2440,56 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     }
 
     /**
-     * Set the source path for analyzed classes.
+     * Set source path for analyzed classes.
      *
-     * @param path the source path
+     * @param sourcePaths the source paths
      * @return this operation
-     * @throws IllegalArgumentException if the {@code path} array or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code sourcePaths} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code sourcePaths} is {@code null}
      * @see #sourcePath(Path...)
      * @see #sourcePath(File...)
      * @see #sourcePath(Collection)
      * @see #sourcePath()
      */
-    public SpotBugsOperation sourcePath(@NonNull String... path) {
-        ObjectTools.requireAllNotEmpty(path, SOURCE_PATH_NOT_VALID);
-        sourcePath_.addAll(List.of(path));
+    public SpotBugsOperation sourcePath(@NonNull String... sourcePaths) {
+        ObjectTools.requireNotEmpty(sourcePaths, SOURCE_PATH);
+        sourcePath_.addAll(List.of(sourcePaths));
         return this;
     }
 
     /**
-     * Set the source path for analyzed classes.
+     * Set source path for analyzed classes.
      *
-     * @param path the source path
+     * @param paths the source paths
      * @return this operation
-     * @throws IllegalArgumentException if the {@code path} array or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code paths} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code paths} is {@code null}
      * @see #sourcePath(String...)
      * @see #sourcePath(File...)
      * @see #sourcePath(Collection)
      * @see #sourcePath()
      */
-    public SpotBugsOperation sourcePath(@NonNull Path... path) {
-        ObjectTools.requireAllNotEmpty(path, SOURCE_PATH_NOT_VALID);
-        sourcePath_.addAll(CollectionTools.combinePathsToStrings(path));
+    public SpotBugsOperation sourcePath(@NonNull Path... paths) {
+        ObjectTools.requireNotEmpty(paths, SOURCE_PATH);
+        sourcePath_.addAll(CollectionTools.combinePathsToStrings(paths));
         return this;
     }
 
     /**
-     * Set the source path for analyzed classes.
+     * Set source path for analyzed classes.
      *
-     * @param path the source path
+     * @param files the source file paths
      * @return this operation
-     * @throws IllegalArgumentException if the {@code path} array or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code files} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code files} is {@code null}
      * @see #sourcePath(String...)
      * @see #sourcePath(Path...)
      * @see #sourcePath(Collection)
      * @see #sourcePath()
      */
-    public SpotBugsOperation sourcePath(@NonNull File... path) {
-        ObjectTools.requireAllNotEmpty(path, SOURCE_PATH_NOT_VALID);
-        sourcePath_.addAll(CollectionTools.combineFilesToStrings(path));
+    public SpotBugsOperation sourcePath(@NonNull File... files) {
+        ObjectTools.requireNotEmpty(files, SOURCE_PATH);
+        sourcePath_.addAll(CollectionTools.combineFilesToStrings(files));
         return this;
     }
 
@@ -2466,51 +2509,54 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     /**
      * Set the source path for analyzed classes.
      *
-     * @param path the source path
+     * @param sourcePaths the source paths
      * @return this operation
-     * @throws IllegalArgumentException if the {@code path} collection or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code sourcePaths} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code sourcePaths} is {@code null}
      * @see #sourcePath(String...)
      * @see #sourcePath(Path...)
      * @see #sourcePath(File...)
      * @see #sourcePath()
      */
-    public SpotBugsOperation sourcePath(@NonNull Collection<String> path) {
-        ObjectTools.requireAllNotEmpty(path, SOURCE_PATH_NOT_VALID);
-        sourcePath_.addAll(path);
+    public SpotBugsOperation sourcePath(@NonNull Collection<String> sourcePaths) {
+        ObjectTools.requireNotEmpty(sourcePaths, SOURCE_PATH);
+        sourcePath_.addAll(sourcePaths);
         return this;
     }
 
     /**
-     * Set the source path for analyzed classes.
+     * Set source path for analyzed classes.
      *
-     * @param path the source path
+     * @param files the source file paths
      * @return this operation
-     * @throws IllegalArgumentException if the {@code path} collection or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code files} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code files} is {@code null}
      * @see #sourcePath(String...)
      * @see #sourcePath(Path...)
      * @see #sourcePath(File...)
      * @see #sourcePath()
      */
-    public SpotBugsOperation sourcePathFiles(@NonNull Collection<File> path) {
-        ObjectTools.requireAllNotEmpty(path, SOURCE_PATH_NOT_VALID);
-        sourcePath_.addAll(CollectionTools.combineFilesToStrings(path));
+    public SpotBugsOperation sourcePathFiles(@NonNull Collection<File> files) {
+        ObjectTools.requireNotEmpty(files, "sourcePathFiles");
+        sourcePath_.addAll(CollectionTools.combineFilesToStrings(files));
         return this;
     }
 
     /**
-     * Set the source path for analyzed classes.
+     * Set the source paths for analyzed classes.
      *
-     * @param path the source path
+     * @param paths the source paths
      * @return this operation
-     * @throws IllegalArgumentException if the {@code path} collection or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code paths} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code paths} is {@code null}
      * @see #sourcePath(String...)
      * @see #sourcePath(Path...)
      * @see #sourcePath(File...)
      * @see #sourcePath()
      */
-    public SpotBugsOperation sourcePathPaths(@NonNull Collection<Path> path) {
-        ObjectTools.requireAllNotEmpty(path, SOURCE_PATH_NOT_VALID);
-        sourcePath_.addAll(CollectionTools.combinePathsToStrings(path));
+    public SpotBugsOperation sourcePathPaths(@NonNull Collection<Path> paths) {
+        ObjectTools.requireNotEmpty(paths, "sourcePathPaths");
+        sourcePath_.addAll(CollectionTools.combinePathsToStrings(paths));
         return this;
     }
 
@@ -2531,13 +2577,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param jar the SpotBugs jar file
      * @return this operation
-     * @throws IllegalArgumentException if {@code jar} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code jar} is empty
+     * @throws NullPointerException     if {@code jar} is {@code null}
      * @see #spotBugsJar(File)
      * @see #spotBugsJar(Path)
      * @see #spotBugsJar()
      */
     public SpotBugsOperation spotBugsJar(@NonNull String jar) {
-        ObjectTools.requireNotEmpty(jar, "spotBugsJar must not be null or empty");
+        ObjectTools.requireNotEmpty(jar, "spotBugsJar");
         this.spotBugsJar_ = new File(jar);
         return this;
     }
@@ -2545,32 +2592,32 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     /**
      * Sets the SpotBugs jar file.
      *
-     * @param jarPath the SpotBugs jar file
+     * @param path the SpotBugs jar file
      * @return this operation
-     * @throws NullPointerException if {@code jarPath} is {@code null}
+     * @throws NullPointerException if {@code path} is {@code null}
      * @see #spotBugsJar(File)
      * @see #spotBugsJar(String)
      * @see #spotBugsJar()
      */
-    public SpotBugsOperation spotBugsJar(@NonNull Path jarPath) {
-        Objects.requireNonNull(jarPath, "spotBugsJar must not be null");
-        this.spotBugsJar_ = jarPath.toFile();
+    public SpotBugsOperation spotBugsJar(@NonNull Path path) {
+        ObjectTools.requireNonNull(path, "spotBugsJar");
+        this.spotBugsJar_ = path.toFile();
         return this;
     }
 
     /**
      * Sets the SpotBugs jar file.
      *
-     * @param jar the SpotBugs jar file
+     * @param file the SpotBugs jar file
      * @return this operation
-     * @throws NullPointerException if {@code jar} is {@code null}
+     * @throws NullPointerException if {@code file} is {@code null}
      * @see #spotBugsJar(String)
      * @see #spotBugsJar(Path)
      * @see #spotBugsJar()
      */
-    public SpotBugsOperation spotBugsJar(@NonNull File jar) {
-        Objects.requireNonNull(jar, "spotBugsJar must not be null");
-        this.spotBugsJar_ = jar;
+    public SpotBugsOperation spotBugsJar(@NonNull File file) {
+        ObjectTools.requireNonNull(file, "spotBugsJar");
+        this.spotBugsJar_ = file;
         return this;
     }
 
@@ -2601,43 +2648,44 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param file the preferences file
      * @return this operation instance
-     * @throws IllegalArgumentException if the {@code file} is {@code null}
+     * @throws IllegalArgumentException if {@code file} is {@code null}
      * @see #userPrefs(String)
      * @see #userPrefs(Path)
      */
     public SpotBugsOperation userPrefs(@NonNull File file) {
-        Objects.requireNonNull(file, "userPrefs must not be null");
+        ObjectTools.requireNonNull(file, "userPrefs");
         userPrefs_ = file;
         return this;
     }
 
     /**
-     * User preferences file.
+     * User preferences path.
      *
-     * @param file the preferences file
+     * @param path the preferences path
      * @return this operation instance
-     * @throws IllegalArgumentException if the {@code file} is {@code null}
+     * @throws IllegalArgumentException if {@code path} is {@code null}
      * @see #userPrefs(File)
      * @see #userPrefs(String)
      */
-    public SpotBugsOperation userPrefs(@NonNull Path file) {
-        Objects.requireNonNull(file, "userPrefs must not be null");
-        userPrefs_ = file.toFile();
+    public SpotBugsOperation userPrefs(@NonNull Path path) {
+        ObjectTools.requireNonNull(path, "userPrefs");
+        userPrefs_ = path.toFile();
         return this;
     }
 
     /**
      * User preferences file.
      *
-     * @param file the preferences file
+     * @param filePath the preferences file path
      * @return this operation instance
-     * @throws IllegalArgumentException if the {@code file} is {@code null} or empty
+     * @throws IllegalArgumentException if {@code filePath} is empty
+     * @throws NullPointerException     if {@code filePath} is {@code null}
      * @see #userPrefs(File)
      * @see #userPrefs(Path)
      */
-    public SpotBugsOperation userPrefs(String file) {
-        ObjectTools.requireNotEmpty(file, "userPrefs must not be null");
-        userPrefs_ = new File(file);
+    public SpotBugsOperation userPrefs(String filePath) {
+        ObjectTools.requireNotEmpty(filePath, "userPrefs");
+        userPrefs_ = new File(filePath);
         return this;
     }
 
@@ -2655,12 +2703,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param visitors the visitors to run
      * @return this operation
-     * @throws IllegalArgumentException if the {@code visitors} array or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code visitors} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code visitors} is {@code null}
      * @see #visitors(Collection)
      * @see #visitors()
      */
     public SpotBugsOperation visitors(@NonNull String... visitors) {
-        ObjectTools.requireAllNotEmpty(visitors, "visitors values must not be null or empty");
+        ObjectTools.requireNotEmpty(visitors, "visitors");
         visitors_.addAll(CollectionTools.combine(visitors));
         return this;
     }
@@ -2670,12 +2719,13 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @param visitors the visitors to run
      * @return this operation
-     * @throws IllegalArgumentException if the {@code visitors} collection or its elements are {@code null} or empty
+     * @throws IllegalArgumentException if {@code visitors} elements are {@code null} or empty
+     * @throws NullPointerException     if {@code visitors} is {@code null}
      * @see #visitors(String...)
      * @see #visitors()
      */
     public SpotBugsOperation visitors(@NonNull Collection<String> visitors) {
-        ObjectTools.requireAllNotEmpty(visitors, "visitors values must not be null or empty");
+        ObjectTools.requireNotEmpty(visitors, "visitors");
         visitors_.addAll(CollectionTools.combine(visitors));
         return this;
     }
@@ -2711,6 +2761,29 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      */
     public boolean workHard() {
         return workHard_;
+    }
+
+    @SuppressFBWarnings("EXS_EXCEPTION_SOFTENING_NO_CONSTRAINTS")
+    private File createAnalyzeFile(Collection<File> analyze) {
+        try {
+            File analyzeFile = createTempFile("analyzeFile");
+            var analyzeList = analyze.stream().map(File::getAbsolutePath).toList();
+            writeLinesToFile(analyzeList, analyzeFile);
+            return analyzeFile;
+        } catch (IOException e) {
+            throw new UncheckedIOException("Could not create or write analyze file", e);
+        }
+    }
+
+    @SuppressFBWarnings("EXS_EXCEPTION_SOFTENING_NO_CONSTRAINTS")
+    private File createAuxClasspathFile(Collection<String> auxClasspath) {
+        try {
+            File auxFile = createTempFile("aux");
+            writeLinesToFile(auxClasspath, auxFile);
+            return auxFile;
+        } catch (IOException e) {
+            throw new UncheckedIOException("Could not create or write auxiliary classpath file", e);
+        }
     }
 
     private File createTempFile(String prefix) throws IOException {
@@ -2756,7 +2829,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
     private String logFormat(String message, Object... args) {
         if (args.length == 0) {
-            return message; // no formatting required
+            return message;
         }
         return String.format(message, args);
     }

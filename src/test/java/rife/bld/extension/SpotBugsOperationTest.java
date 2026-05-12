@@ -516,8 +516,6 @@ class SpotBugsOperationTest {
                     .map(f -> f.flag().split("[:=]")[0])
                     .collect(Collectors.toSet());
 
-            System.out.println(implementedBases);
-
             for (var e : emitted) {
                 assertTrue(implementedBases.contains(e),
                         "executeConstructProcessCommandList emitted undeclared flag: " + e);
@@ -1667,7 +1665,7 @@ class SpotBugsOperationTest {
             var commandList = op.executeConstructProcessCommandList();
             assertTrue(commandList.contains("-pluginList"),
                     "-pluginList is not present in command list: " + commandList);
-            assertTrue(commandList.contains(plugin1 + ':' + plugin2),
+            assertTrue(commandList.contains(plugin1 + ';' + plugin2),
                     "plugins are not present in command list: " + commandList);
         }
 
@@ -1687,7 +1685,7 @@ class SpotBugsOperationTest {
             var commandList = op.executeConstructProcessCommandList();
             assertTrue(commandList.contains("-pluginList"),
                     "-pluginList is not present in command list: " + commandList);
-            assertTrue(commandList.contains(plugin1 + ':' + plugin2),
+            assertTrue(commandList.contains(plugin1 + ';' + plugin2),
                     "plugins are not present in command list: " + commandList);
         }
 
@@ -1720,6 +1718,14 @@ class SpotBugsOperationTest {
                     "-projectName is not present in command list: " + commandList);
             assertTrue(commandList.contains(name),
                     "TestProject is not present in command list: " + commandList);
+        }
+
+        @Test
+        void quiet() {
+            var op = newBaseOperation();
+            assertFalse(op.quiet());
+            op = op.quiet(true);
+            assertTrue(op.quiet());
         }
 
         @Test
@@ -1943,6 +1949,7 @@ class SpotBugsOperationTest {
             var foo = new File("foo");
             var op = newBaseOperation().userPrefs("foo");
             var commandList = op.executeConstructProcessCommandList();
+            assertEquals(foo, op.userPrefs(), "userPrefs should be foo");
             assertTrue(commandList.contains("-userPrefs"),
                     "-userPrefs is not present in command lis: " + commandList);
             assertTrue(commandList.contains(foo.getAbsolutePath()),

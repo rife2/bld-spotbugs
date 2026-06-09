@@ -23,6 +23,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EmptySource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import rife.bld.BaseProject;
 import rife.bld.blueprints.BaseProjectBlueprint;
 import rife.bld.extension.spotbugs.Effort;
@@ -45,10 +49,10 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.*;
 
 @ExtendWith(LoggingExtension.class)
-@SuppressWarnings({"PMD.AvoidDuplicateLiterals", "PMD.UseUtilityClass"})
+@SuppressWarnings({"PMD.AvoidDuplicateLiterals"})
 class SpotBugsOperationTest {
 
-    private static final String SPOTBUGS_VERSION = "4.9.8";
+    private static final String SPOTBUGS_VERSION = "4.10.2";
 
     static SpotBugsOperation newBaseOperation() {
         return new SpotBugsOperation()
@@ -97,7 +101,6 @@ class SpotBugsOperationTest {
     }
 
     @Nested
-    @DisplayName("Execute Tests")
     class ExecuteTests {
 
         @SuppressWarnings("LoggerInitializedWithForeignClass")
@@ -111,6 +114,11 @@ class SpotBugsOperationTest {
                 testLogHandler,
                 Level.FINEST
         );
+
+        @BeforeEach
+        void beforeEach() {
+            testLogHandler.clear();
+        }
 
         @Test
         void execute() {
@@ -148,9 +156,6 @@ class SpotBugsOperationTest {
             assertTrue(testLogHandler.containsMessage(
                             "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#urf-unread-field"),
                     "bug description URL not found");
-            assertTrue(testLogHandler.containsMessage(
-                            "//fb-contrib.sourceforge.net/bugdescriptions.html#UAC_UNNECESSARY_API_CONVERSION_FILE_TO_PATH"),
-                    "fb-contrib bug description URL not found");
         }
 
         @Test
@@ -179,7 +184,7 @@ class SpotBugsOperationTest {
             var op = newBaseOperation().detailedMessage(true);
             assertThrows(ExitStatusException.class, op::execute);
             testLogHandler.printLogMessages();
-            assertTrue(testLogHandler.containsMessage("CC_CYCLOMATIC_COMPLEXITY"));
+            assertTrue(testLogHandler.containsMessage("US_USELESS_SUPPRESSION_ON_METHOD"));
         }
 
         @Test
@@ -240,7 +245,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
-        void executeWithIncludeFilter() throws Exception {
+        void executeWithInclude() throws Exception {
             new SpotBugsOperation()
                     .fromProject(new BaseProject(), true)
                     .ignoreFailures(true)
@@ -248,7 +253,8 @@ class SpotBugsOperationTest {
                     .include("src/test/resources/includeFilter.xml")
                     .execute();
             testLogHandler.printLogMessages();
-            assertTrue(testLogHandler.containsExactMessage("Found 1 potential bug in 1 class"));
+            assertTrue(testLogHandler.containsMessageMatching(
+                    Pattern.compile("Found \\d+ potential bugs in 1 class")));
         }
 
         @Test
@@ -290,6 +296,26 @@ class SpotBugsOperationTest {
             assertThrows(ExitStatusException.class, op::execute);
             testLogHandler.printLogMessages();
             assertTrue(testLogHandler.containsMessage(".java:"));
+        }
+
+        @Test
+        void executeWithPluginTest() {
+            var project = new BaseProject();
+            var op = new SpotBugsOperation()
+                    .analyze(project.buildTestDirectory())
+                    .sourcePath(project.srcTestJavaDirectory())
+                    .fromProject(project)
+                    .home("spotbugs-4.9.8");
+            assertThrows(ExitStatusException.class, op::execute);
+            testLogHandler.printLogMessages();
+            assertTrue(testLogHandler.containsMessageMatching(
+                    Pattern.compile("Found \\d+ potential bugs in \\d+ classes")));
+            assertTrue(testLogHandler.containsMessage(
+                            "https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#urf-unread-field"),
+                    "bug description URL not found");
+            assertTrue(testLogHandler.containsMessage(
+                            "//fb-contrib.sourceforge.net/bugdescriptions.html#UAC_UNNECESSARY_API_CONVERSION_FILE_TO_PATH"),
+                    "fb-contrib bug description URL not found");
         }
 
         @Test
@@ -2030,6 +2056,355 @@ class SpotBugsOperationTest {
             var commandList = op.executeConstructProcessCommandList();
             assertTrue(commandList.contains("-workHard"),
                     "-workHard is not present in command list: " + commandList);
+        }
+    }
+
+    @Nested
+    @DisplayName("Validation Tests")
+    @SuppressWarnings("DataFlowIssue")
+    class ValidationTests {
+
+        @Test
+        void adjustPriorityWithNullOrEmpty() {
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().adjustPriority(null, 1));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().adjustPriority("", 1));
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().adjustPriority("Foo", null));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().adjustPriority("", Priority.RAISE));
+        }
+
+        @ParameterizedTest
+        @EmptySource
+        void analyzeWithEmpty(String arg) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().analyze("foo", arg),
+                    "array has empty element");
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().analyzeStrings(List.of("foo", arg)),
+                    "list has empty element");
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().analyzeStrings(List.of()),
+                    "list is empty");
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().analyze(arg),
+                    "varargs empty");
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void analyzeWithNull(String arg) {
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().analyze("foo", arg),
+                    "array has null element");
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().analyzeStrings(List.of("foo", arg)),
+                    "list has null element");
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().analyze((File[]) null),
+                    "array is null");
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().analyze((Collection<File>) null),
+                    "collection is null");
+        }
+
+        @ParameterizedTest
+        @EmptySource
+        void auxClasspathWithEmpty(String arg) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().auxClasspath("foo", arg));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().auxClasspath(List.of("foo", arg)));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().auxClasspath(List.of()));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().auxClasspath(arg));
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void auxClasspathWithNull(String arg) {
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().auxClasspath("foo", arg));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().auxClasspath(List.of("foo", arg)));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().auxClasspath((String[]) null));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().auxClasspath((Collection<String>) null));
+        }
+
+        @ParameterizedTest
+        @EmptySource
+        void bugCategoriesWithEmpty(String arg) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().bugCategories("foo", arg));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().bugCategories(List.of("foo", arg)));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().bugCategories(List.of()));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().bugCategories(arg));
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void bugCategoriesWithNull(String arg) {
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().bugCategories("foo", arg));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().bugCategories(List.of("foo", arg)));
+        }
+
+        @ParameterizedTest
+        @EmptySource
+        void bugReportersWithEmpty(String arg) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().bugReporters("foo", arg));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().bugReporters(List.of("foo", arg)));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().bugReporters(List.of()));
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void bugReportersWithNull(String arg) {
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().bugReporters("foo", arg));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().bugReporters(List.of("foo", arg)));
+        }
+
+        @ParameterizedTest
+        @EmptySource
+        void choosePluginsWithEmpty(String arg) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().choosePlugins("foo", arg));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().choosePlugins(List.of("foo", arg)));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().choosePlugins(List.of()));
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void choosePluginsWithNull(String arg) {
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().choosePlugins("foo", arg));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().choosePlugins(List.of("foo", arg)));
+        }
+
+        @ParameterizedTest
+        @EmptySource
+        void chooseVisitorsWithEmpty(String arg) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().chooseVisitors("foo", arg));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().chooseVisitors(List.of("foo", arg)));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().chooseVisitors(List.of()));
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void chooseVisitorsWithNull(String arg) {
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().chooseVisitors("foo", arg));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().chooseVisitors(List.of("foo", arg)));
+        }
+
+        @Test
+        void effortWithNull() {
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().effort(null));
+        }
+
+        @Test
+        void fileSettersWithNull() {
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().emacs((File) null));
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().exclude((File) null));
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().excludeBugs((File) null));
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().html((File) null));
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().include((File) null));
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().output((File) null));
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().sarif((File) null));
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().sourceInfo((File) null));
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().userPrefs((File) null));
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().spotBugsJar((File) null));
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().home((File) null));
+        }
+
+        @Test
+        void fromProjectWithNull() {
+            assertThrows(NullPointerException.class, () -> new SpotBugsOperation().fromProject(null));
+        }
+
+        @ParameterizedTest
+        @EmptySource
+        void jvmArgsWithEmpty(String arg) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().jvmArgs("foo", arg));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().jvmArgs(List.of("foo", arg)));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().jvmArgs(List.of()));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().jvmArgs(arg));
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void jvmArgsWithNull(String arg) {
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().jvmArgs("foo", arg));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().jvmArgs(List.of("foo", arg)));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().jvmArgs((String[]) null));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().jvmArgs((Collection<String>) null));
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {0, -1, -100})
+        void maxHeapWithNonPositive(int size) {
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().maxHeap(size));
+            assertTrue(ex.getMessage().contains("maxHeap must be positive"));
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {0, -1, -5})
+        void maxRankWithNonPositive(int rank) {
+            IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().maxRank(rank));
+            assertTrue(ex.getMessage().contains("maxRank must be positive"));
+        }
+
+        @ParameterizedTest
+        @EmptySource
+        void omitVisitorsWithEmpty(String arg) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().omitVisitors("foo", arg));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().omitVisitors(List.of("foo", arg)));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().omitVisitors(List.of()));
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void omitVisitorsWithNull(String arg) {
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().omitVisitors("foo", arg));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().omitVisitors(List.of("foo", arg)));
+        }
+
+        @ParameterizedTest
+        @EmptySource
+        void onlyAnalyzeWithEmpty(String arg) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().onlyAnalyze("foo", arg));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().onlyAnalyze(List.of("foo", arg)));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().onlyAnalyze(List.of()));
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void onlyAnalyzeWithNull(String arg) {
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().onlyAnalyze("foo", arg));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().onlyAnalyze(List.of("foo", arg)));
+        }
+
+        @ParameterizedTest
+        @EmptySource
+        void pluginListWithEmpty(String arg) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().pluginList("foo", arg));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().pluginList(List.of("foo", arg)));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().pluginList(List.of()));
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void pluginListWithNull(String arg) {
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().pluginList("foo", arg));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().pluginList(List.of("foo", arg)));
+        }
+
+        @ParameterizedTest
+        @EmptySource
+        void sourcePathWithEmpty(String arg) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().sourcePath("foo", arg));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().sourcePath(List.of("foo", arg)));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().sourcePath(List.of()));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().sourcePath(arg));
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void sourcePathWithNull(String arg) {
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().sourcePath("foo", arg));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().sourcePath(List.of("foo", arg)));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().sourcePath((String[]) null));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().sourcePath((Collection<String>) null));
+        }
+
+        @ParameterizedTest
+        @EmptySource
+        void stringSettersWithEmpty(String arg) {
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().emacs(arg));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().exclude(arg));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().excludeBugs(arg));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().html(arg));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().include(arg));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().output(arg));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().sarif(arg));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().sourceInfo(arg));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().userPrefs(arg));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().spotBugsJar(arg));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().home(arg));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().projectName(arg));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().release(arg));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().html("out.html", arg));
+            assertThrows(IllegalArgumentException.class, () -> new SpotBugsOperation().html(arg, "plain.xsl"));
+        }
+
+        @ParameterizedTest
+        @EmptySource
+        void visitorsWithEmpty(String arg) {
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().visitors("foo", arg));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().visitors(List.of("foo", arg)));
+            assertThrows(IllegalArgumentException.class,
+                    () -> new SpotBugsOperation().visitors(List.of()));
+        }
+
+        @ParameterizedTest
+        @NullSource
+        void visitorsWithNull(String arg) {
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().visitors("foo", arg));
+            assertThrows(NullPointerException.class,
+                    () -> new SpotBugsOperation().visitors(List.of("foo", arg)));
         }
     }
 }

@@ -39,15 +39,15 @@ public void spotbugs() throws Exception {
 The output will look something like:
 
 ```console
-[spotbugs] auxclasspath[build/main, lib/compile/foo-2.3.0.jar, ...]
-[spotbugs] sourcepath[src/main/java, src/main/resources]
-[spotbugs] analyze[build/main]
-[spotbugs] Found 5 potential bugs in 2 classes
-[spotbugs] file:///dev/example/src/main/java/com/example/Example.java:39
+auxclasspath[build/main, lib/compile/foo-2.3.0.jar, ...]
+sourcepath[src/main/java, src/main/resources]
+analyze[build/main]
+Found 5 potential bugs in 2 classes
+file:///dev/example/src/main/java/com/example/Example.java:39
     DCN_NULLPOINTER_EXCEPTION (https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#dcn-nullpointer-exception)
     Method: hasSpace, Class: com.example.Example, Priority: 2, Rank: 17, Category: STYLE
         --> NullPointerException caught
-[spotbugs] file:///dev/example/src/main/java/com/example/Sample.java:27
+file:///dev/example/src/main/java/com/example/Sample.java:27
     EI_EXPOSE_REP (https://spotbugs.readthedocs.io/en/latest/bugDescriptions.html#ei-expose-rep)
     Method: getList, Field: mutableList, Class: com.example.Sample, Priority: 2, Rank: 18, Category: MALICIOUS_CODE
         --> May expose internal representation by returning reference to mutable object

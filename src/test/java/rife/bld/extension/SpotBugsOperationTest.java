@@ -52,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SuppressWarnings({"PMD.AvoidDuplicateLiterals"})
 class SpotBugsOperationTest {
 
-    private static final String SPOTBUGS_VERSION = "4.10.2";
+    private static final String SPOTBUGS_VERSION = "4.10.3";
 
     static SpotBugsOperation newBaseOperation() {
         return new SpotBugsOperation()
@@ -122,7 +122,7 @@ class SpotBugsOperationTest {
 
         @Test
         void execute() {
-            logger.setLevel(Level.WARNING);
+            logger.setLevel(Level.ALL);
             var op = newBaseOperation();
             assertThrows(ExitStatusException.class, op::execute);
             testLogHandler.printLogMessages();
@@ -305,7 +305,7 @@ class SpotBugsOperationTest {
                     .analyze(project.buildTestDirectory())
                     .sourcePath(project.srcTestJavaDirectory())
                     .fromProject(project)
-                    .home("spotbugs-4.9.8");
+                    .home("spotbugs-" + SPOTBUGS_VERSION);
             assertThrows(ExitStatusException.class, op::execute);
             testLogHandler.printLogMessages();
             assertTrue(testLogHandler.containsMessageMatching(

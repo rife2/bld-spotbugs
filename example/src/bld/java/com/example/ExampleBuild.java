@@ -18,9 +18,9 @@ public class ExampleBuild extends Project {
         downloadSources = true;
         repositories = List.of(MAVEN_CENTRAL, RIFE2_RELEASES, RIFE2_SNAPSHOTS);
         
-        var junit = version(6, 1, 0);
+        var junit = version(6, 1, 2);
         scope(provided)
-                .include(dependency("com.github.spotbugs", "spotbugs-annotations", version(4, 10, 2)));
+                .include(dependency("com.github.spotbugs", "spotbugs-annotations", version(4, 10, 3)));
         scope(test)
                 .include(dependency("org.junit.jupiter", "junit-jupiter", junit))
                 .include(dependency("org.junit.platform", "junit-platform-console-standalone", junit));
@@ -34,7 +34,7 @@ public class ExampleBuild extends Project {
     public void spotbugs() throws Exception {
         new SpotBugsOperation()
                 .fromProject(this, true) // check src/main and src/test
-                .home("spotbugs-4.10.1")
+                .home("spotbugs-4.10.3")
                 .exclude("excludeFilter.xml")
                 .execute();
     }

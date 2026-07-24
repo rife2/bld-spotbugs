@@ -56,7 +56,7 @@ public class SpotBugsOperationBuild extends Project {
                 .include(dependency("com.github.spotbugs", "spotbugs-annotations",
                         version(4, 10, 3)));
         scope(test)
-                .include(dependency("com.uwyn.rife2", "bld-extensions-testing-helpers",
+                .include(dependency("com.uwyn.rife2", "bld-testing-helpers",
                         version(1, 1, 0, "SNAPSHOT")))
                 .include(dependency("org.junit.jupiter", "junit-jupiter", junit))
                 .include(dependency("org.junit.platform", "junit-platform-console-standalone", junit));

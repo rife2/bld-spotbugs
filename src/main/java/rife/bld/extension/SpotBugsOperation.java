@@ -22,10 +22,7 @@ import rife.bld.BaseProject;
 import rife.bld.extension.spotbugs.Effort;
 import rife.bld.extension.spotbugs.Priority;
 import rife.bld.extension.spotbugs.SpotBugsFlag;
-import rife.bld.extension.tools.CollectionTools;
-import rife.bld.extension.tools.IOTools;
-import rife.bld.extension.tools.ObjectTools;
-import rife.bld.extension.tools.TextTools;
+import rife.bld.extension.tools.*;
 import rife.bld.operations.AbstractProcessOperation;
 import rife.bld.operations.exceptions.ExitStatusException;
 
@@ -138,7 +135,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             bugMap = SpotBugsXmlParser.parseSarif(sarif_);
         } catch (IOException e) {
             if (!silent() && logger.isLoggable(Level.WARNING)) {
-                logger.warning(logFormat("Unable to parse SARIF report: %s", e.getMessage()));
+                logger.warning(logFormat("Unable to parse SARIF report: %s", e.getLocalizedMessage()));
             }
         }
 
@@ -455,7 +452,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         }
 
         if (loggableFine) {
-            logger.fine(logFormat(String.join(" ", cmd)));
+            logger.fine(PathTools.formatCommandLine(cmd));
         }
 
         return cmd;
@@ -524,8 +521,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
             analyze_.add(project.buildMainDirectory());
         }
         if (sourcePath_.isEmpty()) {
-            sourcePath_.add(project.srcMainResourcesDirectory().getAbsolutePath());
             sourcePath_.add(project.srcMainJavaDirectory().getAbsolutePath());
+            sourcePath_.add(project.srcMainResourcesDirectory().getAbsolutePath());
         }
         if (auxClasspath_.isEmpty()) {
             var mainClasspath = project.compileMainClasspath();
@@ -642,14 +639,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param filePaths array of file paths to analyze
      * @return this operation
      * @throws NullPointerException     if {@code filePaths} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code filePaths} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code filePaths} is empty, or contains blank elements
      * @see #analyze(File...)
      * @see #analyze(Path...)
      * @see #analyze(Collection)
      * @see #analyzeStrings(Collection)
      */
     public SpotBugsOperation analyze(@NonNull String... filePaths) {
-        ObjectTools.requireNotEmpty(filePaths, ANALYZE);
+        TextTools.requireNotBlank(ANALYZE, filePaths);
         analyze_.addAll(CollectionTools.combineStringsToFiles(filePaths));
         return this;
     }
@@ -741,12 +738,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param filePaths collection of file paths to analyze
      * @return this operation
      * @throws NullPointerException     if {@code filePaths} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code filePaths} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code filePaths} is empty, or contains blank elements
      * @see #analyze(String...)
      * @see #analyze(Collection)
      */
     public SpotBugsOperation analyzeStrings(@NonNull Collection<String> filePaths) {
-        ObjectTools.requireNotEmpty(filePaths, "analyzeStrings");
+        TextTools.requireNotBlank(filePaths, "analyzeStrings");
         analyze_.addAll(CollectionTools.combineStringsToFiles(filePaths));
         return this;
     }
@@ -782,12 +779,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param filePaths the auxiliary file paths to set
      * @return this operation
      * @throws NullPointerException     if {@code filePaths} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code filePaths} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code filePaths} is empty, or contains blank elements
      * @see #auxClasspath(Collection)
      * @see #auxClasspath()
      */
     public SpotBugsOperation auxClasspath(@NonNull String... filePaths) {
-        ObjectTools.requireNotEmpty(filePaths, "auxClasspath");
+        TextTools.requireNotBlank("auxClasspath", filePaths);
         auxClasspath_.addAll(List.of(filePaths));
         return this;
     }
@@ -801,12 +798,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param filePaths the auxiliary paths to set
      * @return this operation
      * @throws NullPointerException     if {@code filePaths} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code filePaths} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code filePaths} is empty, or contains blank elements
      * @see #auxClasspath(String...)
      * @see #auxClasspath()
      */
     public SpotBugsOperation auxClasspath(@NonNull Collection<String> filePaths) {
-        ObjectTools.requireNotEmpty(filePaths, "auxClasspath");
+        TextTools.requireNotBlank(filePaths, "auxClasspath");
         auxClasspath_.addAll(filePaths);
         return this;
     }
@@ -828,12 +825,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param categories the bug categories
      * @return this operation
      * @throws NullPointerException     if {@code categories} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code categories} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code categories} is empty, or contains blank elements
      * @see #bugCategories(Collection)
      * @see #bugCategories()
      */
     public SpotBugsOperation bugCategories(@NonNull String... categories) {
-        ObjectTools.requireNotEmpty(categories, "bugCategories");
+        TextTools.requireNotBlank("bugCategories", categories);
         bugCategories_.addAll(List.of(categories));
         return this;
     }
@@ -844,12 +841,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param categories the bug categories
      * @return this operation
      * @throws NullPointerException     if {@code categories} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code categories} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code categories} is empty, or contains blank elements
      * @see #bugCategories(String...)
      * @see #bugCategories()
      */
     public SpotBugsOperation bugCategories(@NonNull Collection<String> categories) {
-        ObjectTools.requireNotEmpty(categories, "bugCategories");
+        TextTools.requireNotBlank(categories, "bugCategories");
         bugCategories_.addAll(categories);
         return this;
     }
@@ -873,12 +870,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param reporters the reporters to enable/disable
      * @return this operation
      * @throws NullPointerException     if {@code reporters} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code reporters} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code reporters} is empty, or contains blank elements
      * @see #bugReporters(Collection)
      * @see #bugReporters()
      */
     public SpotBugsOperation bugReporters(@NonNull String... reporters) {
-        ObjectTools.requireNotEmpty(reporters, "bugReporters");
+        TextTools.requireNotBlank("bugReporters", reporters);
         bugReporters_.addAll(List.of(reporters));
         return this;
     }
@@ -891,12 +888,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param reporters the reporters to enable/disable
      * @return this operation
      * @throws NullPointerException     if {@code reporters} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code reporters} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code reporters} is empty, or contains blank elements
      * @see #bugReporters(String...)
      * @see #bugReporters()
      */
     public SpotBugsOperation bugReporters(@NonNull Collection<String> reporters) {
-        ObjectTools.requireNotEmpty(reporters, "bugReporters");
+        TextTools.requireNotBlank(reporters, "bugReporters");
         bugReporters_.addAll(reporters);
         return this;
     }
@@ -920,12 +917,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param plugins the plugins to enable/disable
      * @return this operation
      * @throws NullPointerException     if {@code plugins} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code plugins} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code plugins} is empty, or contains blank elements
      * @see #choosePlugins(Collection)
      * @see #choosePlugins()
      */
     public SpotBugsOperation choosePlugins(@NonNull String... plugins) {
-        ObjectTools.requireNotEmpty(plugins, "choosePlugins");
+        TextTools.requireNotBlank("choosePlugins", plugins);
         choosePlugins_.addAll(List.of(plugins));
         return this;
     }
@@ -938,12 +935,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param plugins the plugins to enable/disable
      * @return this operation
      * @throws NullPointerException     if {@code plugins} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code plugins} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code plugins} is empty, or contains blank elements
      * @see #choosePlugins(String...)
      * @see #choosePlugins()
      */
     public SpotBugsOperation choosePlugins(@NonNull Collection<String> plugins) {
-        ObjectTools.requireNotEmpty(plugins, "choosePlugins");
+        TextTools.requireNotBlank(plugins, "choosePlugins");
         choosePlugins_.addAll(plugins);
         return this;
     }
@@ -967,12 +964,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param visitors the visitors to enable/disable
      * @return this operation
      * @throws NullPointerException     if {@code visitors} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code visitors} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code visitors} is empty, or contains blank elements
      * @see #chooseVisitors(Collection)
      * @see #chooseVisitors()
      */
     public SpotBugsOperation chooseVisitors(@NonNull String... visitors) {
-        ObjectTools.requireNotEmpty(visitors, "chooseVisitors");
+        TextTools.requireNotBlank("chooseVisitors", visitors);
         chooseVisitors_.addAll(List.of(visitors));
         return this;
     }
@@ -985,12 +982,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param visitors the visitors to enable/disable
      * @return this operation
      * @throws NullPointerException     if {@code visitors} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code visitors} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code visitors} is empty, or contains blank elements
      * @see #chooseVisitors(String...)
      * @see #chooseVisitors()
      */
     public SpotBugsOperation chooseVisitors(@NonNull Collection<String> visitors) {
-        ObjectTools.requireNotEmpty(visitors, "chooseVisitors");
+        TextTools.requireNotBlank(visitors, "chooseVisitors");
         chooseVisitors_.addAll(visitors);
         return this;
     }
@@ -1351,8 +1348,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
         if (includeTest) {
             analyze_.add(project.buildTestDirectory());
-            sourcePath_.add(project.srcTestResourcesDirectory().getAbsolutePath());
             sourcePath_.add(project.srcTestJavaDirectory().getAbsolutePath());
+            sourcePath_.add(project.srcTestResourcesDirectory().getAbsolutePath());
             auxClasspath_.addAll(project.compileTestClasspath());
         }
 
@@ -1764,12 +1761,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param args the args to pass to JVM
      * @return this operation
      * @throws NullPointerException     if {@code args} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code args} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code args} is empty, or contains blank elements
      * @see #jvmArgs(Collection)
      * @see #jvmArgs()
      */
     public SpotBugsOperation jvmArgs(@NonNull String... args) {
-        ObjectTools.requireNotEmpty(args, "jvmArgs");
+        TextTools.requireNotBlank("jvmArgs", args);
         jvmArgs_.addAll(List.of(args));
         return this;
     }
@@ -1780,12 +1777,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param args the args to pass to JVM
      * @return this operation
      * @throws NullPointerException     if {@code args} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code args} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code args} is empty, or contains blank elements
      * @see #jvmArgs(String...)
      * @see #jvmArgs()
      */
     public SpotBugsOperation jvmArgs(@NonNull Collection<String> args) {
-        ObjectTools.requireNotEmpty(args, "jvmArgs");
+        TextTools.requireNotBlank(args, "jvmArgs");
         jvmArgs_.addAll(args);
         return this;
     }
@@ -1970,12 +1967,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param visitors the visitors to omit
      * @return this operation
      * @throws NullPointerException     if {@code visitors} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code visitors} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code visitors} is empty, or contains blank elements
      * @see #omitVisitors(Collection)
      * @see #omitVisitors()
      */
     public SpotBugsOperation omitVisitors(@NonNull String... visitors) {
-        ObjectTools.requireNotEmpty(visitors, "omitVisitors");
+        TextTools.requireNotBlank("omitVisitors", visitors);
         omitVisitors_.addAll(List.of(visitors));
         return this;
     }
@@ -1986,12 +1983,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param visitors the visitors to omit
      * @return this operation
      * @throws NullPointerException     if {@code visitors} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code visitors} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code visitors} is empty, or contains blank elements
      * @see #omitVisitors(String...)
      * @see #omitVisitors()
      */
     public SpotBugsOperation omitVisitors(@NonNull Collection<String> visitors) {
-        ObjectTools.requireNotEmpty(visitors, "omitVisitors");
+        TextTools.requireNotBlank(visitors, "omitVisitors");
         omitVisitors_.addAll(visitors);
         return this;
     }
@@ -2025,12 +2022,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param patterns the patterns to analyze
      * @return this operation
      * @throws NullPointerException     if {@code patterns} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code patterns} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code patterns} is empty, or contains blank elements
      * @see #onlyAnalyze(Collection)
      * @see #onlyAnalyze()
      */
     public SpotBugsOperation onlyAnalyze(@NonNull String... patterns) {
-        ObjectTools.requireNotEmpty(patterns, "onlyAnalyze");
+        TextTools.requireNotBlank("onlyAnalyze", patterns);
         onlyAnalyze_.addAll(List.of(patterns));
         return this;
     }
@@ -2049,12 +2046,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param patterns the patterns to analyze
      * @return this operation
      * @throws NullPointerException     if {@code patterns} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code patterns} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code patterns} is empty, or contains blank elements
      * @see #onlyAnalyze(String...)
      * @see #onlyAnalyze()
      */
     public SpotBugsOperation onlyAnalyze(@NonNull Collection<String> patterns) {
-        ObjectTools.requireNotEmpty(patterns, "onlyAnalyze");
+        TextTools.requireNotBlank(patterns, "onlyAnalyze");
         onlyAnalyze_.addAll(patterns);
         return this;
     }
@@ -2143,12 +2140,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param plugins the plugin list
      * @return this operation
      * @throws NullPointerException     if {@code plugins} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code plugins} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code plugins} is empty, or contains blank elements
      * @see #pluginList(Collection)
      * @see #pluginList()
      */
     public SpotBugsOperation pluginList(@NonNull String... plugins) {
-        ObjectTools.requireNotEmpty(plugins, "pluginList");
+        TextTools.requireNotBlank("pluginList", plugins);
         pluginList_.addAll(List.of(plugins));
         return this;
     }
@@ -2159,12 +2156,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param plugins the plugin list
      * @return this operation
      * @throws NullPointerException     if {@code plugins} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code plugins} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code plugins} is empty, or contains blank elements
      * @see #pluginList(String...)
      * @see #pluginList()
      */
     public SpotBugsOperation pluginList(@NonNull Collection<String> plugins) {
-        ObjectTools.requireNotEmpty(plugins, "pluginList");
+        TextTools.requireNotBlank(plugins, "pluginList");
         pluginList_.addAll(plugins);
         return this;
     }
@@ -2212,8 +2209,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #projectName()
      */
     public SpotBugsOperation projectName(@NonNull String name) {
-        TextTools.requireNotBlank(name, "projectName");
-        projectName_ = name;
+        projectName_ = TextTools.requireNotBlank(name, "projectName");
+
         return this;
     }
 
@@ -2283,8 +2280,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #release()
      */
     public SpotBugsOperation release(@NonNull String release) {
-        TextTools.requireNotBlank(release, "release");
-        release_ = release;
+        release_ = TextTools.requireNotBlank(release, "release");
+
         return this;
     }
 
@@ -2448,14 +2445,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param sourcePaths the source paths
      * @return this operation
      * @throws NullPointerException     if {@code sourcePaths} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code sourcePaths} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code sourcePaths} is empty, or contains blank elements
      * @see #sourcePath(Path...)
      * @see #sourcePath(File...)
      * @see #sourcePath(Collection)
      * @see #sourcePath()
      */
     public SpotBugsOperation sourcePath(@NonNull String... sourcePaths) {
-        ObjectTools.requireNotEmpty(sourcePaths, SOURCE_PATH);
+        TextTools.requireNotBlank(SOURCE_PATH, sourcePaths);
         sourcePath_.addAll(List.of(sourcePaths));
         return this;
     }
@@ -2515,14 +2512,14 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param sourcePaths the source paths
      * @return this operation
      * @throws NullPointerException     if {@code sourcePaths} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code sourcePaths} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code sourcePaths} is empty, or contains blank elements
      * @see #sourcePath(String...)
      * @see #sourcePath(Path...)
      * @see #sourcePath(File...)
      * @see #sourcePath()
      */
     public SpotBugsOperation sourcePath(@NonNull Collection<String> sourcePaths) {
-        ObjectTools.requireNotEmpty(sourcePaths, SOURCE_PATH);
+        TextTools.requireNotBlank(sourcePaths, SOURCE_PATH);
         sourcePath_.addAll(sourcePaths);
         return this;
     }
@@ -2707,12 +2704,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param visitors the visitors to run
      * @return this operation
      * @throws NullPointerException     if {@code visitors} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code visitors} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code visitors} is empty, or contains blank elements
      * @see #visitors(Collection)
      * @see #visitors()
      */
     public SpotBugsOperation visitors(@NonNull String... visitors) {
-        ObjectTools.requireNotEmpty(visitors, "visitors");
+        TextTools.requireNotBlank("visitors", visitors);
         visitors_.addAll(List.of(visitors));
         return this;
     }
@@ -2723,12 +2720,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @param visitors the visitors to run
      * @return this operation
      * @throws NullPointerException     if {@code visitors} is {@code null} or contains {@code null} elements
-     * @throws IllegalArgumentException if {@code visitors} is empty, or contains empty elements
+     * @throws IllegalArgumentException if {@code visitors} is empty, or contains blank elements
      * @see #visitors(String...)
      * @see #visitors()
      */
     public SpotBugsOperation visitors(@NonNull Collection<String> visitors) {
-        ObjectTools.requireNotEmpty(visitors, "visitors");
+        TextTools.requireNotBlank(visitors, "visitors");
         visitors_.addAll(visitors);
         return this;
     }
@@ -2883,6 +2880,9 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
     private String projectRelativePath(String path) {
         if (workDirectory_ != null) {
+            if (path.equals(workDirectory_.getAbsolutePath())) {
+                return ".";
+            }
             var prefix = workDirectory_.getAbsolutePath() + File.separator;
             if (path.startsWith(workDirectory_.getAbsolutePath())) {
                 return path.substring(prefix.length());

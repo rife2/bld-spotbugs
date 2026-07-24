@@ -32,8 +32,8 @@ import rife.bld.blueprints.BaseProjectBlueprint;
 import rife.bld.extension.spotbugs.Effort;
 import rife.bld.extension.spotbugs.Priority;
 import rife.bld.extension.spotbugs.SpotBugsFlag;
-import rife.bld.extension.testing.LoggingExtension;
-import rife.bld.extension.testing.TestLogHandler;
+import rife.bld.testing.LoggingExtension;
+import rife.bld.testing.TestLogHandler;
 import rife.bld.operations.exceptions.ExitStatusException;
 
 import java.io.File;

@@ -700,7 +700,7 @@ class SpotBugsOperationTest {
 
             op.auxClasspath(path1, path2);
 
-            assertEquals(9, op.auxClasspath().size(), "size is not 9");
+            assertEquals(10, op.auxClasspath().size(), "size is not 10");
             assertTrue(op.auxClasspath().contains(path1), path1 + " not found");
             assertTrue(op.auxClasspath().contains(path2), path2 + " not found");
         }
@@ -959,6 +959,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void emacsAsString() {
             var foo = new File("foo");
             var op = newBaseOperation();
@@ -1014,6 +1015,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void excludeAsString() {
             var foo = new File("foo");
             var op = newBaseOperation();
@@ -1065,6 +1067,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void excludeBugsAsString() {
             var foo = new File("foo");
             var op = newBaseOperation();
@@ -1096,6 +1099,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void fileInfo() {
             var foo = new File("foo");
             var op = newBaseOperation();
@@ -1144,6 +1148,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void fromProject() {
             var project = new BaseProject();
             var op = new SpotBugsOperation().fromProject(project);
@@ -1166,6 +1171,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void fromProjectWithTest() {
             var project = new BaseProject();
             var op = new SpotBugsOperation().fromProject(project, true);
@@ -1186,6 +1192,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void fromProjectWithoutTest() {
             var project = new BaseProject();
             var op = new SpotBugsOperation().fromProject(project, false);
@@ -1258,6 +1265,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void htmlAsPath() {
             var foo = Path.of("foo.html");
             var op = newBaseOperation();
@@ -1273,6 +1281,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void htmlAsString() {
             var foo = new File("foo.html");
             var op = newBaseOperation();
@@ -1304,6 +1313,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void htmlWithStylesheetAsPath() {
             var foo = Path.of("foo.html");
             var stylesheet = "fancy.xsl";
@@ -1320,6 +1330,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void htmlWithStylesheetAsString() {
             var foo = new File("foo.html");
             var stylesheet = "fancy.xsl";
@@ -1381,6 +1392,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void includeAsString() {
             var foo = new File("foo");
             var op = newBaseOperation();
@@ -1656,6 +1668,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void outputWithPath() {
             var baz = Path.of("baz");
             var op = newBaseOperation();
@@ -1786,6 +1799,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void sarif() {
             var foo = new File("foo");
             var op = newBaseOperation();
@@ -1804,6 +1818,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void sarifAsFile() {
             var foo = new File("foo");
             var op = newBaseOperation();
@@ -1822,6 +1837,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void sarifAsPath() {
             var foo = Path.of("foo");
             var op = newBaseOperation();
@@ -1942,6 +1958,7 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        @SuppressWarnings("DataFlowIssue")
         void spotBugsJarAsString() {
             var jar = new File("spotbugs.jar");
             var op = newBaseOperation();

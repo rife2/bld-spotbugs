@@ -16,8 +16,9 @@
 
 package rife.bld.extension;
 
-import edu.umd.cs.findbugs.annotations.NonNull;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import rife.bld.BaseProject;
 import rife.bld.extension.spotbugs.Effort;
 import rife.bld.extension.spotbugs.Priority;
@@ -41,6 +42,7 @@ import java.util.logging.Logger;
  * @author <a href="https://erik.thauvin.net/">Erik C. Thauvin</a>
  * @since 1.0
  */
+@NullMarked
 @SuppressFBWarnings(
         value = "EI_EXPOSE_REP",
         justification = "Builder pattern intentionally exposes mutable collections"
@@ -50,6 +52,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
     private static final String ANALYZE = "analyze";
     private static final String INVALID_SPOTBUGS_LOCATION = "Please specify a valid SpotBugs (JAR or home) location.";
+    private static final String SARIF = "sarif";
     private static final String SOURCE_PATH = "sourcePath";
     private static final String SPOTBUGS_SARIF = "spotbugs.sarif";
     private static final String SPOTBUGS_XML = "spotbugs.xml";
@@ -72,18 +75,18 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     private boolean debug_;
     private boolean detailedMessage_;
     private boolean dontCombineWarnings_;
-    private Effort effort_;
-    private File emacs_;
-    private File excludeBugs_;
-    private File exclude_;
+    private @Nullable Effort effort_;
+    private @Nullable File emacs_;
+    private @Nullable File excludeBugs_;
+    private @Nullable File exclude_;
     private boolean experimental_;
     private boolean high_;
-    private Path home_;
-    private String htmlXsl_;
-    private File html_;
+    private @Nullable Path home_;
+    private @Nullable String htmlXsl_;
+    private @Nullable File html_;
     private boolean ignoreFailures_;
     private boolean includeLineNumber_ = true;
-    private File include_;
+    private @Nullable File include_;
     private boolean longBugCodes_;
     private boolean low_;
     private int maxHeap_;
@@ -91,19 +94,19 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
     private boolean medium_;
     private boolean nested_;
     private boolean noClassOk_;
-    private File output_;
+    private @Nullable File output_;
     private boolean progress_;
-    private String projectName_;
+    private @Nullable String projectName_;
     private boolean quiet_;
     private boolean relaxed_;
-    private String release_;
-    private File sarif_;
+    private @Nullable String release_;
+    private @Nullable File sarif_;
     private boolean sortByClass_;
-    private File sourceInfo_;
-    private File spotBugsJar_;
+    private @Nullable File sourceInfo_;
+    private @Nullable File spotBugsJar_;
     private boolean timestampNow_;
-    private File userPrefs_;
-    private File workDirectory_;
+    private @Nullable File userPrefs_;
+    private @Nullable File workDirectory_;
     private boolean workHard_;
 
     /**
@@ -132,7 +135,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
 
         Map<String, String> bugMap = Collections.emptyMap();
         try {
-            bugMap = SpotBugsXmlParser.parseSarif(sarif_);
+            bugMap = SpotBugsXmlParser.parseSarif(ObjectTools.requireNonNull(sarif_, SARIF));
         } catch (IOException e) {
             if (!silent() && logger.isLoggable(Level.WARNING)) {
                 logger.warning(logFormat("Unable to parse SARIF report: %s", e.getLocalizedMessage()));
@@ -502,7 +505,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #fromProject(BaseProject, boolean)
      */
     @Override
-    public SpotBugsOperation fromProject(@NonNull BaseProject project) {
+    public SpotBugsOperation fromProject(BaseProject project) {
         ObjectTools.requireNonNull(project, "fromProject");
 
         if (workDirectory_ == null) {
@@ -608,7 +611,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #adjustPriority(String, Priority)
      * @see #adjustPriorities()
      */
-    public SpotBugsOperation adjustPriority(@NonNull String name, int priority) {
+    public SpotBugsOperation adjustPriority(String name, int priority) {
         TextTools.requireNotBlank(name, "adjustPriority");
         adjustPriority_.add(name + "=" + priority);
         return this;
@@ -626,7 +629,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #adjustPriority(String, int)
      * @see #adjustPriorities()
      */
-    public SpotBugsOperation adjustPriority(@NonNull String name, @NonNull Priority priority) {
+    public SpotBugsOperation adjustPriority(String name, Priority priority) {
         TextTools.requireNotBlank(name, "adjustPriority name");
         ObjectTools.requireNonNull(priority, "adjustPriority priority");
         adjustPriority_.add(name + "=" + priority.name().toLowerCase());
@@ -645,7 +648,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #analyze(Collection)
      * @see #analyzeStrings(Collection)
      */
-    public SpotBugsOperation analyze(@NonNull String... filePaths) {
+    public SpotBugsOperation analyze(String... filePaths) {
         TextTools.requireNotBlank(ANALYZE, filePaths);
         analyze_.addAll(CollectionTools.combineStringsToFiles(filePaths));
         return this;
@@ -662,7 +665,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #analyze(Path...)
      * @see #analyze(Collection)
      */
-    public SpotBugsOperation analyze(@NonNull File... files) {
+    public SpotBugsOperation analyze(File... files) {
         ObjectTools.requireNotEmpty(files, ANALYZE);
         analyze_.addAll(List.of(files));
         return this;
@@ -680,7 +683,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #analyze(Collection)
      * @see #analyzePaths(Collection)
      */
-    public SpotBugsOperation analyze(@NonNull Path... paths) {
+    public SpotBugsOperation analyze(Path... paths) {
         ObjectTools.requireNotEmpty(paths, ANALYZE);
         analyze_.addAll(CollectionTools.combinePathsToFiles(paths));
         return this;
@@ -710,7 +713,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #analyze(File...)
      * @see #analyze(Path...)
      */
-    public SpotBugsOperation analyze(@NonNull Collection<File> files) {
+    public SpotBugsOperation analyze(Collection<File> files) {
         ObjectTools.requireNotEmpty(files, ANALYZE);
         analyze_.addAll(files);
         return this;
@@ -726,7 +729,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #analyze(Path...)
      * @see #analyze(Collection)
      */
-    public SpotBugsOperation analyzePaths(@NonNull Collection<Path> paths) {
+    public SpotBugsOperation analyzePaths(Collection<Path> paths) {
         ObjectTools.requireNotEmpty(paths, "analyzePaths");
         analyze_.addAll(CollectionTools.combinePathsToFiles(paths));
         return this;
@@ -742,7 +745,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #analyze(String...)
      * @see #analyze(Collection)
      */
-    public SpotBugsOperation analyzeStrings(@NonNull Collection<String> filePaths) {
+    public SpotBugsOperation analyzeStrings(Collection<String> filePaths) {
         TextTools.requireNotBlank(filePaths, "analyzeStrings");
         analyze_.addAll(CollectionTools.combineStringsToFiles(filePaths));
         return this;
@@ -783,7 +786,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #auxClasspath(Collection)
      * @see #auxClasspath()
      */
-    public SpotBugsOperation auxClasspath(@NonNull String... filePaths) {
+    public SpotBugsOperation auxClasspath(String... filePaths) {
         TextTools.requireNotBlank("auxClasspath", filePaths);
         auxClasspath_.addAll(List.of(filePaths));
         return this;
@@ -802,7 +805,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #auxClasspath(String...)
      * @see #auxClasspath()
      */
-    public SpotBugsOperation auxClasspath(@NonNull Collection<String> filePaths) {
+    public SpotBugsOperation auxClasspath(Collection<String> filePaths) {
         TextTools.requireNotBlank(filePaths, "auxClasspath");
         auxClasspath_.addAll(filePaths);
         return this;
@@ -829,7 +832,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #bugCategories(Collection)
      * @see #bugCategories()
      */
-    public SpotBugsOperation bugCategories(@NonNull String... categories) {
+    public SpotBugsOperation bugCategories(String... categories) {
         TextTools.requireNotBlank("bugCategories", categories);
         bugCategories_.addAll(List.of(categories));
         return this;
@@ -845,7 +848,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #bugCategories(String...)
      * @see #bugCategories()
      */
-    public SpotBugsOperation bugCategories(@NonNull Collection<String> categories) {
+    public SpotBugsOperation bugCategories(Collection<String> categories) {
         TextTools.requireNotBlank(categories, "bugCategories");
         bugCategories_.addAll(categories);
         return this;
@@ -874,7 +877,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #bugReporters(Collection)
      * @see #bugReporters()
      */
-    public SpotBugsOperation bugReporters(@NonNull String... reporters) {
+    public SpotBugsOperation bugReporters(String... reporters) {
         TextTools.requireNotBlank("bugReporters", reporters);
         bugReporters_.addAll(List.of(reporters));
         return this;
@@ -892,7 +895,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #bugReporters(String...)
      * @see #bugReporters()
      */
-    public SpotBugsOperation bugReporters(@NonNull Collection<String> reporters) {
+    public SpotBugsOperation bugReporters(Collection<String> reporters) {
         TextTools.requireNotBlank(reporters, "bugReporters");
         bugReporters_.addAll(reporters);
         return this;
@@ -921,7 +924,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #choosePlugins(Collection)
      * @see #choosePlugins()
      */
-    public SpotBugsOperation choosePlugins(@NonNull String... plugins) {
+    public SpotBugsOperation choosePlugins(String... plugins) {
         TextTools.requireNotBlank("choosePlugins", plugins);
         choosePlugins_.addAll(List.of(plugins));
         return this;
@@ -939,7 +942,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #choosePlugins(String...)
      * @see #choosePlugins()
      */
-    public SpotBugsOperation choosePlugins(@NonNull Collection<String> plugins) {
+    public SpotBugsOperation choosePlugins(Collection<String> plugins) {
         TextTools.requireNotBlank(plugins, "choosePlugins");
         choosePlugins_.addAll(plugins);
         return this;
@@ -968,7 +971,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #chooseVisitors(Collection)
      * @see #chooseVisitors()
      */
-    public SpotBugsOperation chooseVisitors(@NonNull String... visitors) {
+    public SpotBugsOperation chooseVisitors(String... visitors) {
         TextTools.requireNotBlank("chooseVisitors", visitors);
         chooseVisitors_.addAll(List.of(visitors));
         return this;
@@ -986,7 +989,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #chooseVisitors(String...)
      * @see #chooseVisitors()
      */
-    public SpotBugsOperation chooseVisitors(@NonNull Collection<String> visitors) {
+    public SpotBugsOperation chooseVisitors(Collection<String> visitors) {
         TextTools.requireNotBlank(visitors, "chooseVisitors");
         chooseVisitors_.addAll(visitors);
         return this;
@@ -1091,7 +1094,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see Effort
      * @see #effort()
      */
-    public SpotBugsOperation effort(@NonNull Effort effort) {
+    public SpotBugsOperation effort(Effort effort) {
         ObjectTools.requireNonNull(effort, "effort");
         effort_ = effort;
         return this;
@@ -1103,6 +1106,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return the {@link Effort} configured for this operation, or {@code null} if none
      * @see #effort(Effort)
      */
+    @Nullable
     public Effort effort() {
         return effort_;
     }
@@ -1117,7 +1121,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #emacs(Path)
      * @see #emacs()
      */
-    public SpotBugsOperation emacs(@NonNull File file) {
+    public SpotBugsOperation emacs(File file) {
         ObjectTools.requireNonNull(file, "emacs");
         emacs_ = file;
         return this;
@@ -1133,7 +1137,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #emacs(File)
      * @see #emacs()
      */
-    public SpotBugsOperation emacs(@NonNull Path path) {
+    public SpotBugsOperation emacs(Path path) {
         ObjectTools.requireNonNull(path, "emacs");
         emacs_ = path.toFile();
         return this;
@@ -1150,7 +1154,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #emacs(Path)
      * @see #emacs()
      */
-    public SpotBugsOperation emacs(@NonNull String filePath) {
+    public SpotBugsOperation emacs(String filePath) {
         TextTools.requireNotBlank(filePath, "emacs");
         emacs_ = new File(filePath);
         return this;
@@ -1164,6 +1168,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #emacs(String)
      * @see #emacs(Path)
      */
+    @Nullable
     public File emacs() {
         return emacs_;
     }
@@ -1179,7 +1184,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #exclude(Path)
      * @see #exclude()
      */
-    public SpotBugsOperation exclude(@NonNull File excludeFilter) {
+    public SpotBugsOperation exclude(File excludeFilter) {
         ObjectTools.requireNonNull(excludeFilter, "exclude");
         exclude_ = excludeFilter;
         return this;
@@ -1197,7 +1202,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #exclude(Path)
      * @see #exclude()
      */
-    public SpotBugsOperation exclude(@NonNull String excludeFilter) {
+    public SpotBugsOperation exclude(String excludeFilter) {
         TextTools.requireNotBlank(excludeFilter, "exclude");
         exclude_ = new File(excludeFilter);
         return this;
@@ -1214,7 +1219,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #exclude(String)
      * @see #exclude()
      */
-    public SpotBugsOperation exclude(@NonNull Path excludeFilter) {
+    public SpotBugsOperation exclude(Path excludeFilter) {
         ObjectTools.requireNonNull(excludeFilter, "exclude");
         exclude_ = excludeFilter.toFile();
         return this;
@@ -1228,6 +1233,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #exclude(String)
      * @see #exclude(Path)
      */
+    @Nullable
     public File exclude() {
         return exclude_;
     }
@@ -1243,7 +1249,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #excludeBugs(Path)
      * @see #excludeBugs()
      */
-    public SpotBugsOperation excludeBugs(@NonNull String excludeFile) {
+    public SpotBugsOperation excludeBugs(String excludeFile) {
         TextTools.requireNotBlank(excludeFile, "excludeBugs");
         excludeBugs_ = new File(excludeFile);
         return this;
@@ -1259,7 +1265,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #excludeBugs(Path)
      * @see #excludeBugs()
      */
-    public SpotBugsOperation excludeBugs(@NonNull File excludeFile) {
+    public SpotBugsOperation excludeBugs(File excludeFile) {
         ObjectTools.requireNonNull(excludeFile, "excludeBugs");
         excludeBugs_ = excludeFile;
         return this;
@@ -1275,7 +1281,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #excludeBugs(String)
      * @see #excludeBugs()
      */
-    public SpotBugsOperation excludeBugs(@NonNull Path excludeFile) {
+    public SpotBugsOperation excludeBugs(Path excludeFile) {
         ObjectTools.requireNonNull(excludeFile, "excludeBugs");
         excludeBugs_ = excludeFile.toFile();
         return this;
@@ -1289,6 +1295,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #excludeBugs(File)
      * @see #excludeBugs(Path)
      */
+    @Nullable
     public File excludeBugs() {
         return excludeBugs_;
     }
@@ -1343,7 +1350,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @throws NullPointerException if {@code project} is {@code null}
      * @see #fromProject(BaseProject)
      */
-    public SpotBugsOperation fromProject(@NonNull BaseProject project, boolean includeTest) {
+    public SpotBugsOperation fromProject(BaseProject project, boolean includeTest) {
         fromProject(project);
 
         if (includeTest) {
@@ -1389,7 +1396,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #home(Path)
      * @see #home()
      */
-    public SpotBugsOperation home(@NonNull String home) {
+    public SpotBugsOperation home(String home) {
         TextTools.requireNotBlank(home, "home");
         home_ = Path.of(home);
         return this;
@@ -1405,7 +1412,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #home(Path)
      * @see #home()
      */
-    public SpotBugsOperation home(@NonNull File home) {
+    public SpotBugsOperation home(File home) {
         ObjectTools.requireNonNull(home, "home");
         home_ = home.toPath();
         return this;
@@ -1421,7 +1428,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #home(File)
      * @see #home()
      */
-    public SpotBugsOperation home(@NonNull Path home) {
+    public SpotBugsOperation home(Path home) {
         ObjectTools.requireNonNull(home, "home");
         home_ = home;
         return this;
@@ -1435,6 +1442,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #home(File)
      * @see #home(Path)
      */
+    @Nullable
     public Path home() {
         return home_;
     }
@@ -1452,7 +1460,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(Path, String)
      * @see #html()
      */
-    public SpotBugsOperation html(@NonNull File file) {
+    public SpotBugsOperation html(File file) {
         ObjectTools.requireNonNull(file, "html");
         html_ = file;
         return this;
@@ -1471,7 +1479,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(Path, String)
      * @see #html()
      */
-    public SpotBugsOperation html(@NonNull Path path) {
+    public SpotBugsOperation html(Path path) {
         ObjectTools.requireNonNull(path, "html");
         html_ = path.toFile();
         return this;
@@ -1491,7 +1499,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(Path, String)
      * @see #html()
      */
-    public SpotBugsOperation html(@NonNull String filePath) {
+    public SpotBugsOperation html(String filePath) {
         TextTools.requireNotBlank(filePath, "html");
         html_ = new File(filePath);
         return this;
@@ -1508,6 +1516,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(File, String)
      * @see #html(Path, String)
      */
+    @Nullable
     public File html() {
         return html_;
     }
@@ -1547,7 +1556,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(Path, String)
      * @see #html()
      */
-    public SpotBugsOperation html(@NonNull String filePath, @NonNull String stylesheet) {
+    public SpotBugsOperation html(String filePath, String stylesheet) {
         TextTools.requireNotBlank(filePath, "html filePath");
         TextTools.requireNotBlank(stylesheet, "html stylesheet");
         html_ = new File(filePath);
@@ -1590,7 +1599,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(String, String)
      * @see #html()
      */
-    public SpotBugsOperation html(@NonNull Path filePath, @NonNull String stylesheet) {
+    public SpotBugsOperation html(Path filePath, String stylesheet) {
         ObjectTools.requireNonNull(filePath, "html file");
         TextTools.requireNotBlank(stylesheet, "html stylesheet");
         html_ = filePath.toFile();
@@ -1633,7 +1642,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #html(Path, String)
      * @see #html()
      */
-    public SpotBugsOperation html(@NonNull File file, @NonNull String stylesheet) {
+    public SpotBugsOperation html(File file, String stylesheet) {
         ObjectTools.requireNonNull(file, "html file");
         TextTools.requireNotBlank(stylesheet, "html stylesheet");
         html_ = file;
@@ -1677,7 +1686,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #include(Path)
      * @see #include()
      */
-    public SpotBugsOperation include(@NonNull String includeFilter) {
+    public SpotBugsOperation include(String includeFilter) {
         TextTools.requireNotBlank(includeFilter, "include");
         include_ = new File(includeFilter);
         return this;
@@ -1694,7 +1703,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #include(Path)
      * @see #include()
      */
-    public SpotBugsOperation include(@NonNull File includeFilter) {
+    public SpotBugsOperation include(File includeFilter) {
         ObjectTools.requireNonNull(includeFilter, "include");
         include_ = includeFilter;
         return this;
@@ -1711,7 +1720,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #include(String)
      * @see #include()
      */
-    public SpotBugsOperation include(@NonNull Path includeFilter) {
+    public SpotBugsOperation include(Path includeFilter) {
         ObjectTools.requireNonNull(includeFilter, "include");
         include_ = includeFilter.toFile();
         return this;
@@ -1725,6 +1734,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #include(File)
      * @see #include(Path)
      */
+    @Nullable
     public File include() {
         return include_;
     }
@@ -1765,7 +1775,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #jvmArgs(Collection)
      * @see #jvmArgs()
      */
-    public SpotBugsOperation jvmArgs(@NonNull String... args) {
+    public SpotBugsOperation jvmArgs(String... args) {
         TextTools.requireNotBlank("jvmArgs", args);
         jvmArgs_.addAll(List.of(args));
         return this;
@@ -1781,7 +1791,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #jvmArgs(String...)
      * @see #jvmArgs()
      */
-    public SpotBugsOperation jvmArgs(@NonNull Collection<String> args) {
+    public SpotBugsOperation jvmArgs(Collection<String> args) {
         TextTools.requireNotBlank(args, "jvmArgs");
         jvmArgs_.addAll(args);
         return this;
@@ -1971,7 +1981,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #omitVisitors(Collection)
      * @see #omitVisitors()
      */
-    public SpotBugsOperation omitVisitors(@NonNull String... visitors) {
+    public SpotBugsOperation omitVisitors(String... visitors) {
         TextTools.requireNotBlank("omitVisitors", visitors);
         omitVisitors_.addAll(List.of(visitors));
         return this;
@@ -1987,7 +1997,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #omitVisitors(String...)
      * @see #omitVisitors()
      */
-    public SpotBugsOperation omitVisitors(@NonNull Collection<String> visitors) {
+    public SpotBugsOperation omitVisitors(Collection<String> visitors) {
         TextTools.requireNotBlank(visitors, "omitVisitors");
         omitVisitors_.addAll(visitors);
         return this;
@@ -2026,7 +2036,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #onlyAnalyze(Collection)
      * @see #onlyAnalyze()
      */
-    public SpotBugsOperation onlyAnalyze(@NonNull String... patterns) {
+    public SpotBugsOperation onlyAnalyze(String... patterns) {
         TextTools.requireNotBlank("onlyAnalyze", patterns);
         onlyAnalyze_.addAll(List.of(patterns));
         return this;
@@ -2050,7 +2060,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #onlyAnalyze(String...)
      * @see #onlyAnalyze()
      */
-    public SpotBugsOperation onlyAnalyze(@NonNull Collection<String> patterns) {
+    public SpotBugsOperation onlyAnalyze(Collection<String> patterns) {
         TextTools.requireNotBlank(patterns, "onlyAnalyze");
         onlyAnalyze_.addAll(patterns);
         return this;
@@ -2080,7 +2090,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #output(Path)
      * @see #output()
      */
-    public SpotBugsOperation output(@NonNull String filePath) {
+    public SpotBugsOperation output(String filePath) {
         TextTools.requireNotBlank(filePath, "output");
         output_ = new File(filePath);
         return this;
@@ -2098,7 +2108,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #output(Path)
      * @see #output()
      */
-    public SpotBugsOperation output(@NonNull File file) {
+    public SpotBugsOperation output(File file) {
         ObjectTools.requireNonNull(file, "output");
         output_ = file;
         return this;
@@ -2116,7 +2126,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #output(File)
      * @see #output()
      */
-    public SpotBugsOperation output(@NonNull Path path) {
+    public SpotBugsOperation output(Path path) {
         ObjectTools.requireNonNull(path, "output");
         output_ = path.toFile();
         return this;
@@ -2130,6 +2140,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #output(File)
      * @see #output(Path)
      */
+    @Nullable
     public File output() {
         return output_;
     }
@@ -2144,7 +2155,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #pluginList(Collection)
      * @see #pluginList()
      */
-    public SpotBugsOperation pluginList(@NonNull String... plugins) {
+    public SpotBugsOperation pluginList(String... plugins) {
         TextTools.requireNotBlank("pluginList", plugins);
         pluginList_.addAll(List.of(plugins));
         return this;
@@ -2160,7 +2171,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #pluginList(String...)
      * @see #pluginList()
      */
-    public SpotBugsOperation pluginList(@NonNull Collection<String> plugins) {
+    public SpotBugsOperation pluginList(Collection<String> plugins) {
         TextTools.requireNotBlank(plugins, "pluginList");
         pluginList_.addAll(plugins);
         return this;
@@ -2208,7 +2219,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @throws IllegalArgumentException if {@code name} is blank
      * @see #projectName()
      */
-    public SpotBugsOperation projectName(@NonNull String name) {
+    public SpotBugsOperation projectName(String name) {
         projectName_ = TextTools.requireNotBlank(name, "projectName");
 
         return this;
@@ -2220,6 +2231,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return the project name, or {@code null} if not configured
      * @see #projectName(String)
      */
+    @Nullable
     public String projectName() {
         return projectName_;
     }
@@ -2279,7 +2291,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @throws IllegalArgumentException if {@code release} is blank
      * @see #release()
      */
-    public SpotBugsOperation release(@NonNull String release) {
+    public SpotBugsOperation release(String release) {
         release_ = TextTools.requireNotBlank(release, "release");
 
         return this;
@@ -2291,6 +2303,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @return the release name, or {@code null} if not set
      * @see #release(String)
      */
+    @Nullable
     public String release() {
         return release_;
     }
@@ -2305,8 +2318,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sarif(Path)
      * @see #sarif()
      */
-    public SpotBugsOperation sarif(@NonNull File file) {
-        ObjectTools.requireNonNull(file, "sarif");
+    public SpotBugsOperation sarif(File file) {
+        ObjectTools.requireNonNull(file, SARIF);
         sarif_ = file;
         return this;
     }
@@ -2322,8 +2335,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sarif(Path)
      * @see #sarif()
      */
-    public SpotBugsOperation sarif(@NonNull String filePath) {
-        TextTools.requireNotBlank(filePath, "sarif");
+    public SpotBugsOperation sarif(String filePath) {
+        TextTools.requireNotBlank(filePath, SARIF);
         sarif_ = new File(filePath);
         return this;
     }
@@ -2338,8 +2351,8 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sarif(File)
      * @see #sarif()
      */
-    public SpotBugsOperation sarif(@NonNull Path path) {
-        ObjectTools.requireNonNull(path, "sarif");
+    public SpotBugsOperation sarif(Path path) {
+        ObjectTools.requireNonNull(path, SARIF);
         sarif_ = path.toFile();
         return this;
     }
@@ -2352,6 +2365,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sarif(String)
      * @see #sarif(Path)
      */
+    @Nullable
     public File sarif() {
         return sarif_;
     }
@@ -2389,7 +2403,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sourceInfo(Path)
      * @see #sourceInfo()
      */
-    public SpotBugsOperation sourceInfo(@NonNull String sourceInfo) {
+    public SpotBugsOperation sourceInfo(String sourceInfo) {
         TextTools.requireNotBlank(sourceInfo, "sourceInfo");
         sourceInfo_ = new File(sourceInfo);
         return this;
@@ -2405,7 +2419,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sourceInfo(Path)
      * @see #sourceInfo()
      */
-    public SpotBugsOperation sourceInfo(@NonNull File file) {
+    public SpotBugsOperation sourceInfo(File file) {
         ObjectTools.requireNonNull(file, "sourceInfo");
         sourceInfo_ = file;
         return this;
@@ -2421,7 +2435,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sourceInfo(File)
      * @see #sourceInfo()
      */
-    public SpotBugsOperation sourceInfo(@NonNull Path path) {
+    public SpotBugsOperation sourceInfo(Path path) {
         ObjectTools.requireNonNull(path, "sourceInfo");
         sourceInfo_ = path.toFile();
         return this;
@@ -2435,6 +2449,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sourceInfo(File)
      * @see #sourceInfo(Path)
      */
+    @Nullable
     public File sourceInfo() {
         return sourceInfo_;
     }
@@ -2451,7 +2466,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sourcePath(Collection)
      * @see #sourcePath()
      */
-    public SpotBugsOperation sourcePath(@NonNull String... sourcePaths) {
+    public SpotBugsOperation sourcePath(String... sourcePaths) {
         TextTools.requireNotBlank(SOURCE_PATH, sourcePaths);
         sourcePath_.addAll(List.of(sourcePaths));
         return this;
@@ -2469,7 +2484,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sourcePath(Collection)
      * @see #sourcePath()
      */
-    public SpotBugsOperation sourcePath(@NonNull Path... paths) {
+    public SpotBugsOperation sourcePath(Path... paths) {
         ObjectTools.requireNotEmpty(paths, SOURCE_PATH);
         sourcePath_.addAll(CollectionTools.combinePathsToStrings(paths));
         return this;
@@ -2487,7 +2502,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sourcePath(Collection)
      * @see #sourcePath()
      */
-    public SpotBugsOperation sourcePath(@NonNull File... files) {
+    public SpotBugsOperation sourcePath(File... files) {
         ObjectTools.requireNotEmpty(files, SOURCE_PATH);
         sourcePath_.addAll(CollectionTools.combineFilesToStrings(files));
         return this;
@@ -2518,7 +2533,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sourcePath(File...)
      * @see #sourcePath()
      */
-    public SpotBugsOperation sourcePath(@NonNull Collection<String> sourcePaths) {
+    public SpotBugsOperation sourcePath(Collection<String> sourcePaths) {
         TextTools.requireNotBlank(sourcePaths, SOURCE_PATH);
         sourcePath_.addAll(sourcePaths);
         return this;
@@ -2536,7 +2551,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sourcePath(File...)
      * @see #sourcePath()
      */
-    public SpotBugsOperation sourcePathFiles(@NonNull Collection<File> files) {
+    public SpotBugsOperation sourcePathFiles(Collection<File> files) {
         ObjectTools.requireNotEmpty(files, "sourcePathFiles");
         sourcePath_.addAll(CollectionTools.combineFilesToStrings(files));
         return this;
@@ -2554,7 +2569,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #sourcePath(File...)
      * @see #sourcePath()
      */
-    public SpotBugsOperation sourcePathPaths(@NonNull Collection<Path> paths) {
+    public SpotBugsOperation sourcePathPaths(Collection<Path> paths) {
         ObjectTools.requireNotEmpty(paths, "sourcePathPaths");
         sourcePath_.addAll(CollectionTools.combinePathsToStrings(paths));
         return this;
@@ -2568,6 +2583,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #spotBugsJar(File)
      * @see #spotBugsJar(Path)
      */
+    @Nullable
     public File spotBugsJar() {
         return spotBugsJar_;
     }
@@ -2583,7 +2599,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #spotBugsJar(Path)
      * @see #spotBugsJar()
      */
-    public SpotBugsOperation spotBugsJar(@NonNull String jar) {
+    public SpotBugsOperation spotBugsJar(String jar) {
         TextTools.requireNotBlank(jar, "spotBugsJar");
         this.spotBugsJar_ = new File(jar);
         return this;
@@ -2599,7 +2615,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #spotBugsJar(String)
      * @see #spotBugsJar()
      */
-    public SpotBugsOperation spotBugsJar(@NonNull Path path) {
+    public SpotBugsOperation spotBugsJar(Path path) {
         ObjectTools.requireNonNull(path, "spotBugsJar");
         this.spotBugsJar_ = path.toFile();
         return this;
@@ -2615,7 +2631,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #spotBugsJar(Path)
      * @see #spotBugsJar()
      */
-    public SpotBugsOperation spotBugsJar(@NonNull File file) {
+    public SpotBugsOperation spotBugsJar(File file) {
         ObjectTools.requireNonNull(file, "spotBugsJar");
         this.spotBugsJar_ = file;
         return this;
@@ -2652,7 +2668,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #userPrefs(String)
      * @see #userPrefs(Path)
      */
-    public SpotBugsOperation userPrefs(@NonNull File file) {
+    public SpotBugsOperation userPrefs(File file) {
         ObjectTools.requireNonNull(file, "userPrefs");
         userPrefs_ = file;
         return this;
@@ -2667,7 +2683,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #userPrefs(File)
      * @see #userPrefs(String)
      */
-    public SpotBugsOperation userPrefs(@NonNull Path path) {
+    public SpotBugsOperation userPrefs(Path path) {
         ObjectTools.requireNonNull(path, "userPrefs");
         userPrefs_ = path.toFile();
         return this;
@@ -2683,7 +2699,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #userPrefs(File)
      * @see #userPrefs(Path)
      */
-    public SpotBugsOperation userPrefs(@NonNull String filePath) {
+    public SpotBugsOperation userPrefs(String filePath) {
         TextTools.requireNotBlank(filePath, "userPrefs");
         userPrefs_ = new File(filePath);
         return this;
@@ -2694,6 +2710,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      *
      * @return the user preferences file
      */
+    @Nullable
     public File userPrefs() {
         return userPrefs_;
     }
@@ -2708,7 +2725,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #visitors(Collection)
      * @see #visitors()
      */
-    public SpotBugsOperation visitors(@NonNull String... visitors) {
+    public SpotBugsOperation visitors(String... visitors) {
         TextTools.requireNotBlank("visitors", visitors);
         visitors_.addAll(List.of(visitors));
         return this;
@@ -2724,7 +2741,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @see #visitors(String...)
      * @see #visitors()
      */
-    public SpotBugsOperation visitors(@NonNull Collection<String> visitors) {
+    public SpotBugsOperation visitors(Collection<String> visitors) {
         TextTools.requireNotBlank(visitors, "visitors");
         visitors_.addAll(visitors);
         return this;

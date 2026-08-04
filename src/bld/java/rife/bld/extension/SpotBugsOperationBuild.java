@@ -51,8 +51,9 @@ public class SpotBugsOperationBuild extends Project {
                 .include(dependency("com.fasterxml.jackson.core", "jackson-databind",
                         version(2, 22, 1)))
                 .include(dependency("com.uwyn.rife2", "bld",
-                        version(2, 3, 1, "SNAPSHOT")));
+                        version(2, 4, 0, "SNAPSHOT")));
         scope(provided)
+                .include(dependency("org.jspecify", "jspecify", "1.0.1"))
                 .include(dependency("com.github.spotbugs", "spotbugs-annotations",
                         version(4, 10, 3)));
         scope(test)
@@ -67,7 +68,7 @@ public class SpotBugsOperationBuild extends Project {
                 .docLint(NO_MISSING)
                 .link("https://rife2.github.io/bld/")
                 .link("https://rife2.github.io/rife2/")
-                .link("https://findbugs.sourceforge.net/api/");
+                .link("https://jspecify.dev/docs/api/");
 
         publishOperation()
                 .repository(version.isSnapshot() ? repository("rife2-snapshot") : repository("rife2"))

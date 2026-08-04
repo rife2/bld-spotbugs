@@ -17,7 +17,7 @@
 package rife.bld.extension;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.umd.cs.findbugs.annotations.NonNull;
+import org.jspecify.annotations.NullMarked;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
@@ -38,6 +38,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
+@NullMarked
 final class SpotBugsXmlParser {
 
     private static final String SPOTBUGS_HOST = "spotbugs.readthedocs.io";
@@ -172,7 +173,7 @@ final class SpotBugsXmlParser {
         }
     }
 
-    static Map<String, String> parseSarif(@NonNull File sarifFile) throws IOException {
+    static Map<String, String> parseSarif(File sarifFile) throws IOException {
         Map<String, String> bugMap = new HashMap<>();
 
         if (!IOTools.exists(sarifFile) || sarifFile.length() == 0) {
@@ -197,9 +198,9 @@ final class SpotBugsXmlParser {
 
                                 if (helpUri != null) {
                                     helpUri = normalizeSpotBugsUri(helpUri);
-                                }
-                                if (id != null) {
-                                    bugMap.put(id, helpUri);
+                                    if (id != null) {
+                                        bugMap.put(id, helpUri);
+                                    }
                                 }
                             }
                         }

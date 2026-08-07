@@ -18,7 +18,7 @@ public class ExampleBuild extends Project {
         downloadSources = true;
         repositories = List.of(MAVEN_CENTRAL, RIFE2_RELEASES, RIFE2_SNAPSHOTS);
         
-        var junit = version(6, 1, 2);
+        var junit = version(6, 1, 3);
         scope(provided)
                 .include(dependency("com.github.spotbugs", "spotbugs-annotations", version(4, 10, 3)));
         scope(test)

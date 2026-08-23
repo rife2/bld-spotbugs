@@ -32,9 +32,9 @@ import rife.bld.blueprints.BaseProjectBlueprint;
 import rife.bld.extension.spotbugs.Effort;
 import rife.bld.extension.spotbugs.Priority;
 import rife.bld.extension.spotbugs.SpotBugsFlag;
+import rife.bld.operations.exceptions.ExitStatusException;
 import rife.bld.testing.LoggingExtension;
 import rife.bld.testing.TestLogHandler;
-import rife.bld.operations.exceptions.ExitStatusException;
 
 import java.io.File;
 import java.io.IOException;
@@ -52,7 +52,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SuppressWarnings({"PMD.AvoidDuplicateLiterals"})
 class SpotBugsOperationTest {
 
-    private static final String SPOTBUGS_VERSION = "4.10.3";
+    private static final String SPOTBUGS_VERSION = "4.10.4";
 
     static SpotBugsOperation newBaseOperation() {
         return new SpotBugsOperation()
@@ -305,7 +305,7 @@ class SpotBugsOperationTest {
                     .analyze(project.buildTestDirectory())
                     .sourcePath(project.srcTestJavaDirectory())
                     .fromProject(project)
-                    .home("spotbugs-" + SPOTBUGS_VERSION);
+                    .home("example/spotbugs-" + SPOTBUGS_VERSION);
             assertThrows(ExitStatusException.class, op::execute);
             testLogHandler.printLogMessages();
             assertTrue(testLogHandler.containsMessageMatching(

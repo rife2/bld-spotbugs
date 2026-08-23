@@ -158,6 +158,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
      * @throws UncheckedIOException     if temporary files cannot be created or written
      */
     @Override
+    @SuppressFBWarnings({"CC_CYCLOMATIC_COMPLEXITY", "EXS_EXCEPTION_SOFTENING_NO_CHECKED"})
     protected List<String> executeConstructProcessCommandList() {
         var loggableInfo = logger.isLoggable(Level.INFO) && !silent();
         var loggableFine = logger.isLoggable(Level.FINE) && !silent();
@@ -2792,6 +2793,7 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         }
     }
 
+    @SuppressFBWarnings(value = "EXS_EXCEPTION_SOFTENING_NO_CONSTRAINTS", justification = "For testing purposes")
     private File createAuxClasspathFile(Collection<String> auxClasspath) {
         try {
             File auxFile = createTempFile("aux");
@@ -2913,5 +2915,12 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         return findExistingSourceFile(path)
                 .map(resolvedPath -> resolvedPath.toUri() + formatLineNumber(startLine))
                 .orElse(path);
+    }
+
+    @SuppressFBWarnings(value = "RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE",
+            justification = "This check is completely clean")
+    @SuppressWarnings("unused")
+    private void testingOnly() {
+        var text = "This is a test.";
     }
 }

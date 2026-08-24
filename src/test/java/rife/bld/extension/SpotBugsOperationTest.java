@@ -291,6 +291,15 @@ class SpotBugsOperationTest {
         }
 
         @Test
+        void executeWithJarLocation() {
+            var op = newBaseOperation();
+            assertThrows(ExitStatusException.class, op::execute);
+            testLogHandler.printLogMessages();
+            assertTrue(testLogHandler.containsMessageMatching(
+                    Pattern.compile("Using SpotBugs found at: .*spotbugs-" + SPOTBUGS_VERSION)));
+        }
+
+        @Test
         void executeWithLineNumbers() {
             var op = newBaseOperation().includeLineNumber(true);
             assertThrows(ExitStatusException.class, op::execute);

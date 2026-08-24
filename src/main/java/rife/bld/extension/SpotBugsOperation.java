@@ -169,6 +169,10 @@ public class SpotBugsOperation extends AbstractProcessOperation<SpotBugsOperatio
         if (jar.isEmpty()) {
             throw new IllegalArgumentException(INVALID_SPOTBUGS_LOCATION);
         } else {
+            if (loggableInfo) {
+                logger.info("Using SpotBugs found at: " + jar.get());
+            }
+
             // Resolve defaults once and write back to fields so execute() sees consistent values.
             // This is the single authoritative place defaults are applied; fromProject() may have
             // already set these, in which case the ternaries are no-ops.

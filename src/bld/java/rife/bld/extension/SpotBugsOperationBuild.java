@@ -47,7 +47,7 @@ public class SpotBugsOperationBuild extends Project {
         var junit = version(6, 1, 3);
         scope(compile)
                 .include(dependency("com.uwyn.rife2", "bld-extensions-tools",
-                        version(1, 3, 0, "SNAPSHOT")))
+                        version(1, 3, 0)))
                 .include(dependency("com.fasterxml.jackson.core", "jackson-databind",
                         version(2, 22, 2)))
                 .include(dependency("com.uwyn.rife2", "bld",

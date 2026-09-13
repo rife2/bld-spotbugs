@@ -35,7 +35,7 @@ public class SpotBugsOperationBuild extends Project {
         pkg = "rife.bld.extension";
         name = "SpotBugs";
         archiveBaseName = "bld-spotbugs";
-        version = version(1, 2, 0);
+        version = version(1, 2, 1, "SNAPSHOT");
 
         javaRelease = 17;
 
@@ -50,7 +50,7 @@ public class SpotBugsOperationBuild extends Project {
                         version(1, 3, 0)))
                 .include(dependency("com.fasterxml.jackson.core", "jackson-databind",
                         version(2, 22, 2)))
-                .include(dependency("com.uwyn.rife2", "bld", version(3, 0, 0)));
+                .include(dependency("com.uwyn.rife2", "bld", version(3, 0, 1)));
         scope(provided)
                 .include(dependency("org.jspecify", "jspecify", "1.0.1"))
                 .include(dependency("com.github.spotbugs", "spotbugs-annotations",

@@ -88,7 +88,7 @@ public enum SpotBugsFlag {
      */
     EXCLUDE("-exclude"),
     /**
-     * Exclude bugs that are also reported in the baseline xml output
+     * Exclude bugs that are also reported in the baseline XML output
      */
     EXCLUDE_BUGS("-excludeBugs"),
     /**

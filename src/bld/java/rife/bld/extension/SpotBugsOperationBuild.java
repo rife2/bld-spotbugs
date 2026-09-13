@@ -35,7 +35,7 @@ public class SpotBugsOperationBuild extends Project {
         pkg = "rife.bld.extension";
         name = "SpotBugs";
         archiveBaseName = "bld-spotbugs";
-        version = version(1, 2, 0, "SNAPSHOT");
+        version = version(1, 2, 0);
 
         javaRelease = 17;
 
@@ -57,7 +57,7 @@ public class SpotBugsOperationBuild extends Project {
                         version(4, 10, 4)));
         scope(test)
                 .include(dependency("com.uwyn.rife2", "bld-testing-helpers",
-                        version(1, 1, 0)))
+                        version(1, 1, 1)))
                 .include(dependency("org.junit.jupiter", "junit-jupiter", junit))
                 .include(dependency("org.junit.platform", "junit-platform-console-standalone", junit));
 
